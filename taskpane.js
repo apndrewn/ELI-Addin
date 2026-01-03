@@ -15,11 +15,840 @@ if (!CURRENT_SESSION_ID) {
   sessionStorage.setItem("eli_session_id", CURRENT_SESSION_ID);
 }
 
+// --- CONSTANTS: CENTRALIZED PROMPTS ---
+const PROMPTS = {
+  // --- VERSION HISTORY DATABASE LOGIC ---
+  getVersionHistory: function (docId) {
+    return new Promise((resolve, reject) => {
+      if (!PROMPTS._dbInstance) { PROMPTS.initDocDB().then(() => PROMPTS.getVersionHistory(docId).then(resolve)); return; }
+
+      const txn = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readonly");
+      const store = txn.objectStore(PROMPTS._DOC_STORE_NAME);
+      const req = store.get(docId + "_history");
+
+      req.onsuccess = (e) => {
+        resolve(e.target.result ? e.target.result.versions : []);
+      };
+      req.onerror = () => resolve([]);
+    });
+  },
+
+  saveVersionSnapshot: function (docId, versionObj) {
+    return new Promise((resolve, reject) => {
+      const txn = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readwrite");
+      const store = txn.objectStore(PROMPTS._DOC_STORE_NAME);
+      const key = docId + "_history";
+
+      // Get existing or create new
+      const getReq = store.get(key);
+      getReq.onsuccess = (e) => {
+        let record = e.target.result || { id: key, versions: [] };
+
+        // Add new version (Max 10 to save space)
+        record.versions.push(versionObj);
+        if (record.versions.length > 10) record.versions.shift();
+
+        store.put(record).onsuccess = resolve;
+      };
+    });
+  },
+
+  updateVersionHistory: function (docId, newVersionsArray) {
+    return new Promise((resolve) => {
+      const txn = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readwrite");
+      const store = txn.objectStore(PROMPTS._DOC_STORE_NAME);
+      const key = docId + "_history";
+
+      store.get(key).onsuccess = (e) => {
+        let record = e.target.result || { id: key, versions: [] };
+        record.versions = newVersionsArray;
+        store.put(record).onsuccess = resolve;
+      };
+    });
+  },
+  // 1. Helper: Get Current Language Name (e.g. "es" -> "Spanish")
+  _getLangInstruction: () => {
+    const code = localStorage.getItem("eli_language") || "en";
+    if (code === "en") return ""; // No special instruction for English
+
+    // Map codes to names for better AI accuracy
+    const langMap = {
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      it: "Italian",
+      pt: "Portuguese",
+      zh: "Chinese",
+      ja: "Japanese",
+      ru: "Russian",
+    };
+    const langName = langMap[code] || code.toUpperCase();
+    return `IMPORTANT: Provide the response strictly in ${langName}.`;
+  },
+
+  // ==========================================
+  // START: IndexedDB Logic (Unified Document Storage)
+  // ==========================================
+  // Adapted from User's ScriptLab logic but namespace-safe for ELI
+  // ==========================================
+
+  _DOC_DB_NAME: "ELIDocStorage",
+  _DOC_STORE_NAME: "files",
+  _dbInstance: null,
+
+  initDocDB: function () {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(PROMPTS._DOC_DB_NAME, 1);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(PROMPTS._DOC_STORE_NAME)) {
+          db.createObjectStore(PROMPTS._DOC_STORE_NAME, { keyPath: "id" });
+        }
+      };
+
+      request.onsuccess = (event) => {
+        PROMPTS._dbInstance = event.target.result;
+        console.log("✅ ELI Document Storage Ready");
+        resolve(PROMPTS._dbInstance);
+      };
+
+      request.onerror = (event) => {
+        console.error("Database error:", event.target.error);
+        reject(event.target.error);
+      };
+    });
+  },
+
+  saveDocToDB: function (id, fileObj) {
+    return new Promise((resolve, reject) => {
+      if (!PROMPTS._dbInstance) {
+        PROMPTS.initDocDB().then(() => PROMPTS.saveDocToDB(id, fileObj).then(resolve).catch(reject));
+        return;
+      }
+
+      // --- NEW: DELETE LOGIC (If fileObj is explicitly null, we clear the record) ---
+      if (fileObj === null) {
+        const transaction = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readwrite");
+        const store = transaction.objectStore(PROMPTS._DOC_STORE_NAME);
+        const delReq = store.delete(id);
+        delReq.onsuccess = resolve;
+        delReq.onerror = reject;
+        return;
+      }
+
+      // --- EXISTING: SAVE LOGIC ---
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const arrayBuffer = e.target.result;
+        const transaction = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readwrite");
+        const store = transaction.objectStore(PROMPTS._DOC_STORE_NAME);
+
+        const putRequest = store.put({
+          id: id,
+          data: arrayBuffer,
+          name: fileObj.name,
+          type: fileObj.type,
+          lastModified: Date.now()
+        });
+
+        putRequest.onsuccess = () => {
+          console.log(`Saved "${fileObj.name}" to DB as ${id}`);
+          resolve();
+        };
+
+        putRequest.onerror = (e) => reject(e);
+      };
+      reader.readAsArrayBuffer(fileObj);
+    });
+  },
+
+  saveAICacheToDB: function (id, jsonResult) {
+    // Helper to update JUST the AI cache field of an existing record
+    return new Promise((resolve, reject) => {
+      if (!PROMPTS._dbInstance) return reject("DB Closed");
+
+      const transaction = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readwrite");
+      const store = transaction.objectStore(PROMPTS._DOC_STORE_NAME);
+
+      // Get existing first
+      const getReq = store.get(id);
+      getReq.onsuccess = function () {
+        var data = getReq.result;
+        if (data) {
+          data.aiCache = jsonResult; // Attach JSON result
+          data.aiCacheTime = Date.now();
+
+          const putReq = store.put(data);
+          putReq.onsuccess = resolve;
+          putReq.onerror = reject;
+        } else {
+          reject("Record not found to attach cache");
+        }
+      };
+    });
+  },
+
+  runBackgroundAIAnalysis: async function (fileObj) {
+    console.log("Starting Background AI pre-fetch for: " + fileObj.name);
+
+    // Status UI Helper
+    const setStatus = (icon) => {
+      var sp = document.querySelector("#footerBtnViewFile span");
+      if (sp) sp.innerText = icon;
+    };
+
+    var contextContent = "";
+    var parts = [];
+
+    try {
+      if (fileObj.name.toLowerCase().endsWith(".docx")) {
+        // DOCX -> Text Extraction via Mammoth
+        if (typeof mammoth !== "undefined") {
+          const arrayBuffer = await fileObj.arrayBuffer();
+          var conversion = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+          contextContent = conversion.value.replace(/<table/g, '<table border="1"');
+        } else {
+          throw new Error("Mammoth library missing");
+        }
+      }
+      else if (fileObj.name.toLowerCase().endsWith(".pdf")) {
+        // PDF -> Multimodal (Base64)
+        // We rely on AGREEMENT_DATA being populated by the file loader immediately before this call
+        if (typeof AGREEMENT_DATA !== 'undefined' && AGREEMENT_DATA.isBase64 && AGREEMENT_DATA.data) {
+          // We don't extract text manually; we send the PDF payload
+          contextContent = "[PDF BINARY DATA ATTACHED]";
+        } else {
+          throw new Error("PDF Data not loaded yet");
+        }
+      }
+      else {
+        // Text/JSON -> Raw Read
+        const arrayBuffer = await fileObj.arrayBuffer();
+        var dec = new TextDecoder("utf-8");
+        contextContent = dec.decode(arrayBuffer);
+        if (contextContent.length > 1000000) contextContent = contextContent.substring(0, 1000000);
+      }
+
+      const prompt = `
+             Analyze this document content.
+             TASK: Extract pairs of Field (Left) and Data (Right) from the document.
+             RETURN JSON ARRAY: [ { "field": "...", "data": "..." } ]
+             - Exclude rows where "Data" is empty.
+             - For tabular docs, Left col = Field, Right col = Data.
+          `;
+
+      // Prepare Gemini Payload
+      if (fileObj.name.toLowerCase().endsWith(".pdf")) {
+        parts = [
+          { text: prompt },
+          { inlineData: { mimeType: "application/pdf", data: AGREEMENT_DATA.data } }
+        ];
+      } else {
+        // Text/DOCX Payload
+        parts = [{ text: prompt + "\n\n--- DOCUMENT ---\n" + contextContent }];
+      }
+
+      // Call Gemini (With Retry)
+      var attempts = 0;
+      var maxAttempts = 3;
+      var success = false;
+
+      while (attempts < maxAttempts && !success) {
+        try {
+          attempts++;
+          var resultText = await callGemini(API_KEY, parts);
+          var json = tryParseGeminiJSON(resultText);
+
+          if (Array.isArray(json) && json.length > 0) {
+            var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+            await PROMPTS.saveAICacheToDB(uniqueKey, json);
+            console.log("Background AI Cache Saved:", json.length + " rows");
+
+            // Explicitly Update UI
+            try {
+              var btn = document.getElementById("footerBtnViewFile");
+              if (btn) {
+                btn.style.display = "flex"; // Ensure visible
+                var sp = btn.querySelector("span");
+                if (sp) sp.innerText = "⚡";
+              }
+            } catch (e) { }
+
+            //showToast("⚡ AI Analysis Ready!");
+            setStatus("⚡");
+            success = true;
+          } else {
+            console.warn("AI returned empty/invalid structure");
+            setStatus("⚠️"); // Warning: No Data
+            success = true; // Stop retrying on bad data (it's not an API error)
+          }
+
+        } catch (e) {
+          if (e.message && (e.message.includes("cancelled") || e.message.includes("shorter"))) {
+            // Cancelled = Stop Retrying immediately (assumes superseded)
+            return;
+          }
+          console.log(`Background Attempt ${attempts} failed:`, e);
+
+          if (attempts < maxAttempts) {
+            // Silent Wait 5s
+            await new Promise(r => setTimeout(r, 5000));
+          } else {
+            console.error("Background Analysis Final Fail", e);
+            // Silent Fail (No Toast/Icon) per user request
+          }
+        }
+      }
+
+    } catch (e) {
+      console.error("Pre-Scan Error", e);
+    }
+  },
+
+  deleteDocFromDB: function (id) {
+    return new Promise((resolve, reject) => {
+      if (!PROMPTS._dbInstance) return resolve();
+      try {
+        var txn = PROMPTS._dbInstance.transaction(["docs"], "readwrite");
+        var store = txn.objectStore("docs");
+        store.delete(id);
+        resolve();
+      } catch (e) { resolve(); }
+    });
+  },
+
+  loadDocFromDB: function (id) {
+    return new Promise((resolve, reject) => {
+      if (!PROMPTS._dbInstance) {
+        // Try init first
+        PROMPTS.initDocDB().then(() => {
+          PROMPTS.loadDocFromDB(id).then(resolve).catch(reject);
+        }).catch(evt => resolve(null)); // Resolve null on init fail
+        return;
+      }
+
+      const transaction = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readonly");
+      const store = transaction.objectStore(PROMPTS._DOC_STORE_NAME);
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = (event) => {
+        resolve(event.target.result);
+      };
+
+      getRequest.onerror = (e) => {
+        console.log("DB Get Error", e);
+        resolve(null);
+      };
+    });
+  },
+  SUMMARIZE_CHANGES: (changesList) => {
+    return `You are a Senior Legal Editor.
+    INPUT: List of Tracked Changes.
+    ${JSON.stringify(changesList)}
+    
+    TASK: 
+    1. Analyze each change deeply.
+    2. Classify into: "Financial", "Legal", "Operational", "Formatting".
+    3. Severity: "Critical", "Medium", "Low".
+    4. OUTPUT REQUIREMENTS:
+       - "summary": A clear 1-sentence statement of WHAT changed.
+       - "legal_impact": A detailed 2-3 sentence explanation of WHY it matters (Risk, Benefit, or Commercial consequence).
+       - "clause": The likely section number or header name (e.g. "Section 4.1", "Indemnification") based on text/context. Defaults to "General".
+    
+    RETURN RAW JSON:
+    {
+        "overview": "Executive summary of the negotiation posture.",
+        "changes": [
+            { 
+                "id": 0, 
+                "category": "Financial", 
+                "severity": "Medium", 
+                "clause": "Section 3. Payment",
+                "summary": "Increased payment terms to 60 days.", 
+                "legal_impact": "This negatively impacts working capital and cash flow, but aligns with the counterparty's standard vendor policy." 
+            }
+        ]
+    }`;
+  },
+  TRANSLATE: (targetLanguage, text) =>
+    `You are a professional legal translator.
+    TASK: Translate the following legal text into ${targetLanguage}.
+    RULES:
+    1. Maintain formal legal terminology.
+    2. Do NOT include conversational filler.
+    3. Return ONLY the translated text in a JSON object.
+    
+    Original Text:
+    "${text}"
+    
+    Return RAW JSON: { "translation": "The translated text...", "language": "${targetLanguage}" }`,
+  ERROR_CHECK: (instructions, text) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return (
+      `You are a professional editor for Colgate.
+    ${instructions}
+${langRule}
+   Scan the text below for errors.\n` +
+      `TASK: Identify critical grammatical errors, spelling mistakes, and awkward phrasing.\n` +
+      `LENGTH CONSTRAINT: Keep the 'original' text SHORT (max 10-25 words).
+    Focus strictly on the immediate clause containing the error.\n` +
+      `DO NOT return full paragraphs.
+    If the sentence is long, extract only the specific substring needing change.\n` +
+      `NOISE FILTER: Ignore "Page X of Y", footer text, and margin comments.\n` +
+      `LINE BREAK RULE: Treat newlines (or separate lines) as distinct sentence boundaries. Do NOT flag missing punctuation (like commas) between the end of one line and the start of the next.\n` +
+      `CONTEXT RULE: The text may end with a "CONTEXT" section listing deleted/crossed-out text.
+    DO NOT check that section for errors. Ignore it completely.\n` +
+      `Return a RAW JSON array (no markdown).
+    IMPORTANT: The output must be valid minified JSON.\n` +
+      `Format: [{"original": "Short unique snippet containing the error", "correction": "Corrected snippet", "reason": "Short explanation"}]\n` +
+      `CRITICAL: The 'original' field must be a precise substring of the document text (excluding the context section).\n\nText to check:\n${text}`
+    );
+  },
+  LEGAL_ASSIST: (text) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return (
+      `You are a Senior Legal Assistant for **Colgate**.
+Review this agreement and identify 3-10 specific legal issues/risks.\n` +
+      `IMPORTANT: Do NOT mention anything related to AI or artificial intelligence.\n` +
+      `${langRule}\n` +
+      `NEWLINE RULE: Treat headers and independent lines as separate contexts.\n` +
+      `TRACK CHANGES RULE: Do not flag risks based on text listed in the 'RECENTLY DELETED TEXT' section at the bottom.\n` +
+      `Return a RAW JSON array (no markdown). IMPORTANT: The output must be valid minified JSON.\n` +
+      `Escape all control characters inside strings (e.g., use \\n for newlines, \\t for tabs).\n` +
+      `Format: [{"issue": "Title", "explanation": "3-4 sentences detailed explanation", "fix_suggestion": "Specific advice on how to rewrite.", "quote": "Exact text found in doc", "severity": "High"}]\n` +
+      `SEVERITY LEVELS: Assign 'High' (Red), 'Medium' (Orange), or 'Low' (Green) based on risk to Colgate.\n` +
+      `CRITICAL: The 'quote' field must match the text in the document character-for-character.\n\nText:\n${text}`
+    );
+  },
+
+  NEGOTIATE_RESPONSE: (clause, issue) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return `You are a Senior Negotiator for Colgate.
+    TASK: Write a short, professional email snippet rejecting the clause below based on the identified issue.
+    
+    CLAUSE: "${clause}"
+    ISSUE: "${issue}"
+    
+    GUIDELINES:
+    1. Be polite but firm.
+    2. Focus on "Market Standards" or "Company Policy" as the reason.
+    3. Keep it under 3 sentences.
+    4. ${langRule}
+    5. Return ONLY the email body text. Do NOT include "Subject:" or "To:".`;
+  },
+
+  NEGOTIATE_BATCH: (issues) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return `You are a Senior Negotiator for Colgate.
+    TASK: Write a cohesive email to opposing counsel rejecting the following clauses.
+    
+    ISSUES TO ADDRESS:
+    ${JSON.stringify(issues)}
+    
+    GUIDELINES:
+    1. ${langRule}
+    2. Start with "Hi [Name], thanks for the draft. We have a few comments:"
+    3. Use a NUMBERED LIST (1., 2., 3.) for the objections.
+    4. CRITICAL: Do NOT invent Section Numbers (e.g. "Section 12.5") if they are not explicitly visible in the text. Instead, refer to the clause by Topic (e.g. "Regarding the Indemnity clause...").
+    5. Be polite but firm, citing "Market Standards" or "Internal Policy".
+    6. Return ONLY the email body text. Do NOT include "Subject:" or "To:".`;
+  },
+  JUSTIFY: (userInput, context) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return `You are a Senior Negotiator for Colgate.
+    TASK: Analyze the user's request and provide a comprehensive defense strategy.
+    CRITICAL TERMINOLOGY RULE: Always refer to us as "Colgate" in your rationale. Do NOT use "Company" or "Client".
+    
+    USER INTENT/CHANGE: "${userInput}"
+    ORIGINAL CLAUSE CONTEXT: "${context}"
+    
+    RETURN RAW JSON (No Markdown):
+    {
+      "rationale": "Write a professional, firm comment (2-3 sentences) justifying this change. Start with 'Colgate requires...'",
+      "talking_points": ["Strongest argument (1 sentence)", "Secondary argument (risk-based)", "Commercial leverage point"],
+      "fallback": "If they reject this, suggest a specific middle-ground compromise (e.g. 'Cap at 24 months instead of 12')."
+    }
+    ${langRule}`;
+  },
+
+  // [Search for "SUMMARY: (audience, text) =>" around line 79 in script final 3b.txt]
+  SUMMARY: (audience, text, optionalKeys) => {
+    // 1. Check if the user specifically asked for Finance/Commercial terms
+    var isFinance =
+      audience.toLowerCase().includes("finance") ||
+      audience.toLowerCase().includes("commercial");
+    const langRule = PROMPTS._getLangInstruction();
+
+    // 2. Define the extraction keys
+    // IF optionalKeys are provided -> Use them directly
+    // ELSE IF Finance -> Use the Money keys
+    // ELSE -> Use the EXACT ORIGINAL keys
+    var keysInstruction =
+      optionalKeys ||
+      (isFinance
+        ? `"Parties": { "value": "Name vs. Name", "quote": "exact quote" },
+          "Payment_Terms": { "value": "e.g. Net 30", "quote": "exact quote" },
+           "Late_Fees": { "value": "e.g. 1.5% per month", "quote": "..." },
+           "Total_Contract_Value": { "value": "e.g. $150,000 / year", "quote": "..." },
+           "Renewal_Date": { "value": "YYYY-MM-DD", "quote": "..." },
+           "Price_Increases": { "value": "e.g. Capped at 3%", "quote": "..." }`
+        : `"Parties": { "value": "Name vs. Name", "quote": "exact quote" },
+           "Effective_Date": { "value": "YYYY-MM-DD", "quote": "exact quote" },
+           "Term_Length": { "value": "e.g. 3 Years", "quote": "exact quote" },
+           "Liability_Cap": { "value": "e.g. 2x Fees / $1M", "quote": "exact quote" },
+           "Governing_Law": { "value": "State/Country", "quote": "exact quote" },
+           "Financials": { "value": "e.g. $150k/year", "quote": "exact quote" }`);
+
+    // 3. Define the Risk Focus
+    // IF Finance -> Focus on money risks
+    // ELSE -> Use the EXACT ORIGINAL risk instructions
+    var riskInstruction = isFinance
+      ? `FOCUS STRICTLY on money-related risks (e.g. uncapped price increases, hidden fees, currency risks, penalty clauses). Ignore standard legal boilerplate like jurisdiction.`
+      : `RISK CALIBRATION (VERY LENIENT):
+        1. DEFAULT to "Low Risk". Most standard business agreements should be Green.
+           2. Only mark "High" for massive deal-breakers (e.g. Totally Uncapped Liability).
+           3. Only mark "Medium" for extreme outliers (e.g. Payment Terms > 120 days).
+           4. TEMPLATE RULE: If the document contains placeholders like "[Name]" or "[Date]", IGNORE them.
+           5. QUANTITY RULE: Always identify and list the Top 3 distinct risks. If fewer exist, list minor points to reach 3.`;
+
+    // 4. Construct the Final Prompt
+    return `You are a Senior ${isFinance ? "Financial Analyst" : "Legal Assistant"} for **Colgate**.
+    TASK: Analyze this agreement and extract ${isFinance ? "critical commercial and financial data" : "key deal points"} for a ${audience}.
+    ${riskInstruction}
+${langRule}
+    
+    RETURN RAW JSON (No Markdown) with this specific structure:
+    {
+      "doc_type": "e.g. Master Services Agreement",
+      "risk_level": "Low | Medium | High",
+      "key_terms": {
+         ${keysInstruction}
+      },
+      "undefined_terms": ["List", "Of", "Ghost", "Terms"],
+      "executive_summary": "A 3-5 sentence high-level overview${isFinance ? " focusing on costs, payment schedules, and financial commitments" : " of the agreement scope"}.",
+      
+      "red_flags": [
+          { 
+            "risk": "Risk Title", 
+            "explanation": "2-3 sentences explaining the impact.",
+            "quote": "Exact text quote from doc..." 
+          }
+      ],
+      
+      "email_draft": "Write a professional email to ${audience} summarizing these points.",
+      "navigation_markers": [
+          { "label": "Indemnity", "quote": "Exact SECTION HEADER text" },
+          { "label": "Termination", "quote": "Exact SECTION HEADER text" },
+          { "label": "Liability", "quote": "Exact SECTION HEADER text" },
+          { "label": "Warranties", "quote": "Exact SECTION HEADER text" }
+      ]
+    }
+    Text to analyze:
+    ${text}`;
+  },
+  // ==========================================
+  QA: (history, question, text, mode) => {
+    const langRule = PROMPTS._getLangInstruction();
+    let modeInstruction = "";
+
+    // 1. Determine Mode (Strict vs Broad)
+    if (mode === "broad") {
+      modeInstruction = `
+    MODE: BROAD / CONSULTANT
+    - Base your facts on the document.
+    - If the user asks for opinions, explanations, or "market standards" that are not in the file, USE YOUR GENERAL KNOWLEDGE to answer helpfully.
+    - FORMATTING: Use HTML tags for structure (<b>bold</b>, <ul><li>lists</li></ul>, <br> breaks).`;
+    } else {
+      modeInstruction = `
+    MODE: STRICT / AUDITOR
+    - Answer ONLY based on the provided text.
+    - CRITICAL: If the answer is not explicitly in the text, you MUST return exactly: "I cannot find this information in the document. Please turn off <b>Strict Mode</b> (toggle below) to allow outside resources."
+    - FORMATTING: Use HTML tags for structure.`;
+    }
+
+    // 2. Detect "Hybrid" Input (Selection + Full Doc)
+    if (text.includes("TARGET SELECTION (USER HIGHLIGHTED)")) {
+      modeInstruction += `
+    
+    CONTEXTUAL ANALYSIS RULE:
+    - The user has highlighted a specific section ("TARGET SELECTION").
+    - Focus your answer on that selection.
+    - HOWEVER, you MUST cross-reference the "FULL DOCUMENT CONTEXT" to check for definitions, conflicting clauses, or overriding terms that affect the selection.`;
+    }
+
+    return `You are 'ELI', an AI legal assistant.
+    CONTEXT: ${JSON.stringify(history)}
+    CURRENT QUESTION: ${question}
+    
+    DOCUMENT TEXT:
+    ${text}
+    
+    ${langRule}
+    ${modeInstruction}
+    
+    TASK: Return a RAW JSON Object (no markdown).
+    Structure: { "answer": "The HTML formatted answer...", "citations": ["exact substring from text used as proof"] }`;
+  },
+  // ==========================================
+  // END: QA
+  // ==========================================
+  // ==========================================
+  // END: QA
+  // ==========================================
+
+  DRAFT: (topic, context) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return `You are a Senior Attorney for Colgate.
+    Draft a legal clause based on the request below.
+    
+    Request: ${topic}
+    Context (Existing Document): ${context}
+    
+    DRAFTING RULES:
+    1. DEFINED TERMS: You MUST use "Colgate" to refer to our entity. Do NOT use "Company", "Client", or "Buyer".
+    2. Be precise and favorable to Colgate.
+    
+    ${langRule}
+    Return STRICT RAW JSON with NO MARKDOWN formatting.
+    Format: { "title": "Clause Title", "text": "The legal clause text...", "explanation": "Why this phrasing was chosen..." }`;
+  },
+
+  // [Search for PROMPTS object, specifically TEMPLATE_MAP key]
+
+  TEMPLATE_MAP: (placeholders, fileContent) => {
+    return (
+      `You are a data extraction assistant.
+    I have a document with these placeholders:\n${JSON.stringify(placeholders)}\n\n` +
+      `I have a data file with this content:\n"""\n${fileContent}\n"""\n\n` +
+      `TASK: Map the data file content to the placeholders.
+    
+    CRITICAL RULES:
+    1. FIELDS STARTING WITH "$": Extract ONLY the Total Fee / Monetary Amount (e.g., "$10,000", "5,000 EUR"). Do NOT include the schedule or "payable upon...". Just the number.
+    
+    2. FIELDS STARTING WITH "!": Extract ONLY the Payment Terms / Schedule (e.g., "50% on signing and 50% on completion", "Net 30").
+    
+    3. DATES: If the text contains relative dates (e.g., "30 days after signature"), extract that exact phrase.
+    
+    Return a raw JSON object where keys are the EXACT placeholders and values are the extracted data.`
+    );
+  },
+  REWRITE: (instruction, originalText) => {
+    const langRule = PROMPTS._getLangInstruction();
+    return `You are a Senior Attorney for Colgate negotiating a contract.
+    TASK: Rewrite the following clause based on this instruction: "${instruction}".
+    
+    CRITICAL DRAFTING INSTRUCTIONS (INTERNAL GOAL):
+    1. TERMINOLOGY: Use "Colgate" for us and "Provider" (or appropriate term) for the other party.
+    2. AGGRESSIVE FAVORABILITY: If the user asks to make it "favorable to Colgate":
+       - DELETE "Mutual" or "Either Party" concepts.
+       - DRAFT ASYMMETRICALLY: Cap Colgate's liability (e.g., to fees paid), but leave the Provider's liability UNCAPPED or capped at a very high multiple.
+       - EXPAND exclusions for the Provider (make them liable for Data Breach, IP, etc.).
+       - LIMIT exclusions for Colgate.
+    3. Do NOT include conversational filler.
+    
+    RATIONALE STRATEGY (EXTERNAL EXPLANATION):
+    - The "summary" field will be shown to the counterparty.
+    - DIPLOMACY RULE: Do NOT say "Making this favorable to Colgate."
+    - Instead, use neutral, policy-based justifications.
+    - BAD: "Removed mutuality to protect Colgate."
+    - GOOD: "Aligned with corporate risk standards regarding liability caps."
+    - GOOD: "Updated to reflect standard internal policy for service providers."
+    
+    Original Clause:
+    "${originalText}"
+    
+    ${langRule}
+    
+    Return RAW JSON: { "rewrite": "The new legal text...", "summary": "1 professional, neutral sentence justifying the change." }`;
+  },
+  COMPARE: (docA, docB, mode) => {
+    const langRule = PROMPTS._getLangInstruction();
+    var labelA = mode === "template" ? "STANDARD TEMPLATE" : "OLD VERSION";
+    var labelB = mode === "template" ? "DRAFT" : "NEW VERSION";
+
+    return `You are a Senior Legal Editor.
+    TASK: Compare "${labelA}" against "${labelB}".
+    
+    CRITICAL ANALYSIS RULES:
+    1. IGNORE RENUMBERING: If a clause is moved or renumbered (e.g. "Section 4.1" becomes "Section 5.1") but the text content is identical, **DO NOT** report it as a change.
+    2. IGNORE MISSING NUMBERS: If the text extraction stripped automatic numbering (e.g. "1." is missing), assume it exists. Do not flag "continuous text" as an issue.
+    3. FOCUS ON SUBSTANCE: Only report changes to definitions, obligations, liabilities, dates, or financial terms.
+    
+    OUTPUT FORMAT RULES: 
+    1. RETURN ONLY VALID JSON. Do not use Markdown.
+    2. ARRAY FORMAT: The output must be a list of objects.
+    3. NO TEXT TAGS: Use "section": "Clause Name".
+    
+    ${langRule}
+    
+    RETURN RAW JSON ARRAY:
+    [{
+        "section": "Clause Name (e.g. Indemnity)",
+        "change_type": "Critical" | "Moderate" | "Minor",
+        "description": "Explain the legal impact.",
+        "original_snippet": "Short quote (max 100 chars)",
+        "new_snippet": "Short quote (max 100 chars)"
+    }]
+
+    --- ${labelA} ---
+    ${docA.substring(0, 1000000)}
+    
+    --- ${labelB} ---
+    ${docB.substring(0, 1000000)}`;
+  },
+};
+
+// 1. Initialize when Office and DOM are ready
+// 1. Initialize when Office and DOM are ready
+// --- TOOLBAR STATE ---
+var toolbarPage = 1;
+// DEFINITION: All available tools (Updated with Descriptions)
+var TOOL_DEFINITIONS = [
+  {
+    id: "btnError",
+    key: "error",
+    i18n: "btnError",
+    icon: "📝",
+    label: "Error Check",
+    desc: "Scans for typos, grammar mistakes, and broken cross-references.",
+    action: function () {
+      setActiveButton("btnError");
+      tryCollapseToolbar();
+      runInteractiveErrorCheck();
+    },
+    configAction: function () {
+      showConfigModal("error");
+    },
+  },
+  {
+    id: "btnAssist",
+    key: "legal",
+    i18n: "btnLegal",
+    icon: "⚖️",
+    label: "Legal Issues",
+    desc: "AI analysis of high-risk clauses like Indemnity, Liability, and Termination.",
+    action: function () {
+      setActiveButton("btnAssist");
+      tryCollapseToolbar();
+      runAiAssist();
+    },
+    configAction: function () {
+      showConfigModal("legal");
+    },
+  },
+  {
+    id: "btnSummary",
+    key: "summary",
+    i18n: "btnSummary",
+    icon: "📋",
+    label: "Summary",
+    desc: "Extracts key deal points (Parties, Dates, Fees) into a clean grid.",
+    action: function () {
+      setActiveButton("btnSummary");
+      tryCollapseToolbar();
+      runSummary();
+    },
+    configAction: function () {
+      configureSummary();
+    },
+  },
+  {
+    id: "btnPlaybook",
+    key: "playbook",
+    i18n: "btnPlaybook",
+    icon: "📖",
+    label: "Playbook",
+    desc: "Compares document against Colgate's playbook and provides fallbacks.",
+    action: function () {
+      setActiveButton("btnPlaybook");
+      tryCollapseToolbar();
+      showPlaybookInterface();
+    },
+    configAction: function () {
+      showPlaybookSourceManager();
+    },
+  },
+  {
+    id: "btnCompare",
+    key: "compare",
+    i18n: "btnCompare",
+    icon: "↔️",
+    label: "Compare",
+    desc: "Upload a second file to see a Redline analysis against this document.",
+    action: function () {
+      setActiveButton("btnCompare");
+      tryCollapseToolbar();
+      showCompareInterface();
+    },
+    configAction: function () {
+      showConfigModal("compare");
+    },
+  },
+  {
+    id: "btnTemplate",
+    key: "template",
+    i18n: "btnAutoFill",
+    icon: "⚡",
+    label: "Build Draft",
+    desc: "Builds a draft from a template and fills [Placeholders] from a file or form.",
+    action: function () {
+      setActiveButton("btnTemplate");
+      tryCollapseToolbar();
+      showAutoFillHub();
+    },
+    // NEW: Adds the Gear Icon to the button
+    configAction: function () {
+      showFileNameSettings();
+    },
+  },
+  {
+    id: "btnEmailTool",
+    key: "email",
+    i18n: "btnEmail",
+    icon: "✉️",
+    label: "Email",
+    desc: "Drafts Outlook-ready cover emails to Counterparties or Requesters.",
+    action: function () {
+      setActiveButton("btnEmailTool");
+      tryCollapseToolbar();
+
+      // 1. Force a new snapshot labeled "(EMAILED)"
+      // 4th arg 'true' ensures we DO NOT overwrite the "Original Version"
+      createSnapshot("CP Version -- (EMAILED)", null, function () {
+
+        // 2. Proceed to the Email Tool
+        requireUserName(function () {
+          runAiEmailScanner();
+        });
+
+      }, true); // <--- TRUE = Force New Entry
+    },
+    // RESTORED: Mini Settings Icon
+    configAction: function () {
+      showConfigModal("email");
+    },
+  },
+  {
+    id: "btnQA",
+    key: "chat",
+    i18n: "lblChat",
+    icon: "💬",
+    label: "Ask ELI",
+    desc: "Chat assistant. Use tools to Rewrite, Defend, or Translate text.",
+    action: function () {
+      setActiveButton("btnQA");
+      tryCollapseToolbar();
+      showChatInterface();
+    },
+  },
+];
+
+
 //console.log("📅 Session ID (Daily):", CURRENT_SESSION_ID);
 // We keep this variable defined as a placeholder so we don't have to delete it 
 // from every function call below. It is no longer used for authentication.
 const API_KEY = "SECURE_PROXY_MODE";
-
 // 🧠 ELI KNOWLEDGE BASE (EDIT THIS TO TEACH THE BOT)
 
 const CLAUSE_DB_NAME = "ELI_ClauseDB";
@@ -1307,8 +2136,6 @@ const LOADING_MSGS = {
     "✅ Smiles all around..."
   ]
 };
-// --- CONSTANTS: CENTRALIZED PROMPTS ---
-
 // ==========================================
 // START: renderToolbar (CRASH PROOF VERSION)
 // ==========================================
