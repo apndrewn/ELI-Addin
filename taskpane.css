@@ -1,0 +1,3942 @@
+/* =========================================
+   CORE LAYOUT LOCK (Prevents Whole-App Scrolling)
+   ========================================= */
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+
+    /* CRITICAL: This locks the main window */
+    overflow: hidden !important;
+
+    /* Optional: Prevents "rubber band" bouncing on Mac/Touch */
+    overscroll-behavior: none;
+
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.app-container {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+
+    /* 1. REMOVE PADDING TO RAISE & WIDEN - CHANGED: added 4px x-padding to prevent clipping */
+    padding: 0 4px !important;
+
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Ensure only the Output Area scrolls */
+.output-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    /* Allow vertical scroll here ONLY */
+    overflow-x: hidden;
+    padding-right: 4px;
+    padding: 10px;
+    padding-bottom: 40px;
+    /* Space for footer */
+}
+
+
+/* =========================================
+   1. HEADER AREA (Updated: Reduced Height)
+   ========================================= */
+.header {
+    /* Option 19: Metallic Red Gradient */
+    background: linear-gradient(180deg, #e57373 0%, #b71c1c 50%, #8a0b0b 100%) !important;
+
+    /* Matching Dark Red Bottom Border */
+    border-bottom: 1px solid #5a0000 !important;
+
+    /* Keep existing layout settings */
+    padding: 8px 12px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    /* Text stays white */
+    border-radius: 0px;
+    margin-bottom: 0px !important;
+    border: 3px solid #ffb300 !important;
+    /* Gold border around entire header */
+    z-index: 50;
+    /* Keep header on top */
+    position: relative;
+}
+
+/* --- BRAND ICON BOX (Glassmorphism & Animation) --- */
+.brand-icon-box {
+    width: auto;
+    height: 32px;
+    padding: 0 12px;
+    /* REMOVED BOX */
+    border: none !important;
+    background: transparent !important;
+    backdrop-filter: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0px;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 50;
+    transition: all 0.2s ease;
+}
+
+.brand-icon-box:hover {
+    border-color: #ffffff !important;
+    background-color: transparent !important;
+    background: transparent !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+    z-index: 10000 !important;
+}
+
+/* --- BRAND TITLES (Fixed Layout) --- */
+.brand-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Tighter gap for box */
+    width: 100%;
+    /* Full width to hold button at end */
+    padding: 8px 14px 8px 14px;
+    /* Box Padding (Increased) */
+
+    /* PREMIUM GLASS BOX */
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 0px;
+    /* Squared off */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(2px);
+
+    box-sizing: border-box;
+    /* Ensure padding doesn't overflow width */
+}
+
+.brand-titles {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: auto;
+    /* Changed from 32px to auto to fit padding */
+    line-height: 1;
+    gap: 2px;
+
+    /* CRITICAL: Prevents multi-line wrapping */
+    white-space: nowrap;
+    /* overflow: hidden; Removed to fix clipped descenders */
+}
+
+.company-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.app-label {
+    font-family: 'Georgia', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffd700;
+    letter-spacing: 0.2px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    /* Stronger shadow for gold text */
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    /* Double lock against wrapping */
+}
+
+/* Hide the long text on small screens or laptop mode */
+@media (max-width: 480px) {
+    .long-title {
+        display: none;
+    }
+}
+
+body.compact-mode .long-title {
+    display: none;
+}
+
+/* The Neon Blue "Sup" Text */
+.app-label sup {
+    font-size: 9px;
+    font-weight: 900;
+    margin-left: 0px;
+    color: #40c4ff;
+    /* Neon Blue */
+    text-shadow: 0 0 8px rgba(64, 196, 255, 0.6);
+    vertical-align: top;
+    position: relative;
+    top: -4px;
+    letter-spacing: 0.5px;
+}
+
+/* --- SETTINGS BUTTON (Glass Style) --- */
+.header-status {
+    display: flex;
+    align-items: center;
+}
+
+#btnHeaderSettings,
+#btnHeaderSnapshot {
+    height: 32px;
+    width: 32px;
+    /* Square since text is gone */
+    padding: 0;
+
+    /* REMOVED INNER BOX (Transparent) */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+
+    border-radius: 0px !important;
+
+    backdrop-filter: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0;
+
+    /* Only auto-margin for settings to push right, Snapshot is before it */
+    margin-left: 0;
+
+    /* Ensure clickable */
+    position: relative;
+    z-index: 9999;
+    pointer-events: auto;
+}
+
+
+
+#btnHeaderSettings {
+    margin-left: auto;
+    /* Push to right */
+}
+
+#btnHeaderSettings:hover,
+#btnHeaderSnapshot:hover {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    /* Removed Box */
+
+    /* RESTORED PREMIUM HOVER (Scale + Glow) */
+    transform: scale(1.2) !important;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.9) !important;
+
+    z-index: 10000 !important;
+}
+
+#btnHeaderSettings .settings-text,
+#btnHeaderSnapshot .settings-text {
+    display: none !important;
+    /* user requested removal */
+}
+
+/* Settings Icon: Standard Size */
+#btnHeaderSettings .settings-icon {
+    font-size: 18px;
+    opacity: 0.9;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+/* Camera Icon: Large & Lifted */
+#btnHeaderSnapshot .settings-icon {
+    font-size: 24px;
+    opacity: 0.95;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    position: relative;
+    top: -3px;
+    /* Moved up slightly */
+}
+
+#btnHeaderSettings:hover .settings-text {
+    color: #ffffff;
+}
+
+#btnHeaderSettings:hover .settings-icon {
+    filter: none;
+    animation: spinGear 2s linear infinite;
+}
+
+#btnHeaderSettings span::before,
+#btnHeaderSettings span::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* --- ANIMATIONS (Crucial for v37 Look) --- */
+.brand-ai-logo {
+    width: 28px;
+    height: 28px;
+    overflow: visible;
+}
+
+.ai-network-ring {
+    transform-origin: 50px 50px;
+    animation: orbitSpin 12s linear infinite;
+}
+
+.ai-pulse {
+    transform-origin: 50px 50px;
+    animation: pulseGlow 4s ease-in-out infinite;
+}
+
+.brand-icon-box:hover .ai-network-ring {
+    animation-duration: 2s;
+    opacity: 1;
+}
+
+.brand-icon-box:hover .brand-ai-logo text {
+    fill: #ffffff;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+    transition: all 0.3s ease;
+}
+
+@keyframes orbitSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes boxTracking {
+    0% {
+        offset-distance: 0%;
+    }
+
+    100% {
+        offset-distance: 100%;
+    }
+}
+
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        transform: scale(0.85);
+        opacity: 0.1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.3;
+    }
+}
+
+@keyframes spinGear {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* =========================================
+   2. GLOBAL BUTTONS (PLATINUM RECTANGLES - RESTORED FROM v37)
+   ========================================= */
+
+/* A. TOOLBAR CONTAINER */
+/* A. TOOLBAR CONTAINER */
+.button-group {
+    display: flex;
+    gap: 6px;
+    /* Space between buttons */
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding: 4px;
+    /* Frame the buttons */
+    padding-bottom: 6px;
+    /* Extend background below buttons */
+    /* Keep bottom flush if needed, or 4px? Let's stick to instruction */
+    /* --- ULTRA-PLATINUM FINISH --- */
+    background: linear-gradient(180deg, #ffffff 0%, #e6e9f0 100%) !important;
+
+    /* Machined Edges */
+    border-top: 1px solid #ffffff !important;
+    border-bottom: 2px solid #b0bec5 !important;
+
+    /* Metallic Sheen */
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+
+    /* CHANGED: Increased height to accommodate bottom padding */
+    height: 46px;
+
+    overflow: visible;
+    z-index: 10;
+}
+
+/* GOLD BOTTOM BORDER REMOVED */
+
+/* B. UNIVERSAL BUTTON BASE (Platinum Finish) */
+/* B. UNIVERSAL BUTTON BASE (Premium Typography Update) */
+/* --- OPTION 17: PLATINUM & BOOK ANTIQUA (Refined) --- */
+
+/* =========================================
+   INTERACTIVE BUTTON STATES
+   ========================================= */
+
+/* 1. SETUP: Base Button Requirements for Effects */
+/* 1. BUTTON BASE (Light Blue Platinum Default) */
+.btn-tile {
+    /* MERGED LAYOUT PROPS */
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    flex: 1 !important;
+    height: 100% !important;
+    padding: 2px 4px !important;
+
+    /* --- TECH BLUE: Satin Finish --- */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 25%),
+        linear-gradient(180deg, #eef9ff 0%, #dcecff 50%, #c4e0ff 100%) !important;
+
+    /* Steel Blue Borders */
+    border: 1px solid #90a4ae !important;
+    border-bottom: 3px solid #546e7a !important;
+    /* Dark Steel Ledge */
+
+    /* Crisp Highlights */
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 1px 2px rgba(0, 0, 0, 0.1) !important;
+    /* ------------------------------------ */
+
+    border-radius: 0px !important;
+    /* Squared Off */
+    cursor: pointer;
+    position: relative;
+    overflow: hidden !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 1;
+}
+
+
+/* 2. THE SHEEN (Invisible Shine Bar) */
+/* 2. HOVER OVERLAY (Smooth Fade) */
+.btn-tile::after {
+    content: "" !important;
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* The Blue Hover Gradient */
+    background: linear-gradient(to bottom, #f0f7ff 0%, #cce5ff 100%);
+    opacity: 0;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Snappier feel */
+    z-index: 1;
+    /* Above base, below content */
+    pointer-events: none;
+}
+
+/* FIX: Turn Text & Icon White on Hover */
+.btn-tile:hover .tile-label,
+.btn-tile:hover .tile-icon {
+    color: #ffffff !important;
+    /* White Text */
+    opacity: 1 !important;
+
+    /* Optional: Adds a subtle shadow so white text pops against the blue */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 3. MOUSE OVER (HOVER): Premium Luminous Blue */
+.btn-tile:hover {
+    /* Richer, dimensionality-enhancing gradient */
+    background: linear-gradient(145deg, #42a5f5 0%, #1565c0 100%) !important;
+    border-color: #1565c0 !important;
+
+    /* Deep "Lifted" Shadow + Glassy Edge Highlight */
+    box-shadow:
+        0 8px 20px rgba(21, 101, 192, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+
+    transform: translateY(-2px) !important;
+    z-index: 20;
+}
+
+/* Trigger Sheen Sweep */
+.btn-tile:hover::after {
+    opacity: 0 !important;
+    display: none !important;
+}
+
+/* 4. BUTTON CLICK (:active): Deep Tactile Press */
+.btn-tile:active {
+    /* Physical Press Animation */
+    transform: scale(0.98) translateY(1px) !important;
+
+    /* Darker, "In-Shadow" Gradient */
+    background: linear-gradient(to bottom, #0d47a1 0%, #1565c0 100%) !important;
+
+    /* Deep Inner Shadow */
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4) !important;
+
+    border-right: 1px solid #0d47a1 !important;
+    transition: all 0.05s ease !important;
+    /* Snappier response */
+    z-index: 100;
+}
+
+/* 6. ACCESSIBILITY: Premium Focus Ring */
+.btn-tile:focus-visible {
+    outline: none !important;
+    /* White gap + Blue Glow Ring */
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1976d2, 0 4px 12px rgba(25, 118, 210, 0.4) !important;
+    z-index: 100 !important;
+}
+
+/* 7. DISABLED STATE: Etched & Lock */
+.btn-tile[disabled],
+.btn-tile.disabled {
+    background: #e0e0e0 !important;
+    color: #9e9e9e !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    cursor: notify !important;
+    pointer-events: none !important;
+    border-color: #cfd8dc !important;
+}
+
+.btn-tile[disabled] .tile-icon,
+.btn-tile[disabled] .tile-label {
+    opacity: 0.4 !important;
+    filter: grayscale(100%) !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    /* Etched light */
+}
+
+/* 5. OVERLAY PRESS COLOR (Mechanical Light Blue) */
+.btn-tile:active::after {
+    background: linear-gradient(to bottom, #e3f2fd 0%, #bbdefb 100%) !important;
+    transition: none !important;
+    opacity: 1 !important;
+}
+
+/* Text turn white removed for smoothness */
+.btn-tile:active .tile-label,
+.btn-tile:active .tile-icon {
+    /* color: #ffffff !important; REMOVED */
+    transform: none !important;
+    filter: none !important;
+}
+
+/* 5. PERSISTENT ACTIVE STATE (JS Toggled) - MATCH BUTTON CLICK */
+/* 5. PERSISTENT ACTIVE STATE - MATCHES CLICK */
+/* 5. PERSISTENT ACTIVE STATE (Matches Hover Dark Blue) */
+.btn-tile.active-tool {
+    transform: translateY(1px) !important;
+    /* Slight press effect */
+
+    /* --- MATCH HOVER: Deep Rich Blue Gradient --- */
+    background: linear-gradient(to bottom, #1976d2 0%, #0d47a1 100%) !important;
+    border-color: #0d47a1 !important;
+
+    /* Inset shadow makes it look "pressed in" */
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25) !important;
+
+    z-index: 20;
+}
+
+/* Hide the light overlay so Dark Blue shows */
+.btn-tile.active-tool::after {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+/* Force Text & Icon WHITE on Active */
+.btn-tile.active-tool .tile-label,
+.btn-tile.active-tool .tile-icon {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    opacity: 1 !important;
+}
+
+
+
+/* 2. The Text (Refined Typography) */
+/* TYPOGRAPHY: Drop Shadow + White Outline */
+.tile-label {
+    /* FONT: Book Antiqua / Bookman Stack */
+    font-family: 'Book Antiqua', 'Bookman Old Style', 'Palatino Linotype', serif !important;
+
+    /* SIZE & WEIGHT */
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    /* Bold needed for the outline to read well */
+
+    /* Spacing & Color */
+    letter-spacing: 0.5px !important;
+    color: #37474f !important;
+    /* Dark Slate (Standard text color) */
+
+    /* THE EFFECT: White Outline + Soft Drop Shadow */
+    text-shadow:
+        -1px -1px 0 #ffffff,
+        1px -1px 0 #ffffff,
+        -1px 1px 0 #ffffff,
+        1px 1px 0 #ffffff,
+        0 3px 6px rgba(0, 0, 0, 0.25) !important;
+
+    text-transform: uppercase !important;
+    margin-top: 2px !important;
+    /* Ensure Label stays on top of hover overlay */
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+/* 3. The Icon */
+.tile-icon {
+    font-size: 16px !important;
+    opacity: 1 !important;
+
+    color: #1565c0 !important;
+    /* Enterprise Blue */
+
+    text-shadow: none !important;
+    transition: all 0.2s !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+/* Hover Effects */
+.btn-tile:hover .tile-icon {
+    opacity: 1 !important;
+    color: #ffffff !important;
+    /* Force Icon White */
+}
+
+.btn-tile:hover .tile-label {
+    color: #ffffff !important;
+    /* Force Text White */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    /* Restore shadow for contrast */
+}
+
+/* --- PRESERVED .btn-action STYLES --- */
+
+/* B. UNIVERSAL BUTTON BASE (Premium Typography Update) */
+.btn-action {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    /* PLATINUM GRADIENT */
+    background: linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%);
+
+    /* 3D METALLIC EDGES */
+    border: 1px solid #b0bec5;
+    border-top: 1px solid #cfd8dc;
+    border-radius: 0px;
+
+    /* SHADOWS: Crisp Inner Highlight */
+    box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0, 0, 0, 0.08);
+
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+    /* --- TYPOGRAPHY UPGRADE --- */
+    font-family: 'Book Antiqua', serif;
+    font-size: 12px;
+
+    /* Weight 500 is Medium/Regular for Book Antiqua */
+    font-weight: 500;
+
+    /* Slate Blue-Grey Color (Professional) */
+    color: #455a64;
+
+    /* WIDER TRACKING = PREMIUM LOOK */
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+
+    /* SUBTLE "ETCHED" HIGHLIGHT */
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Specific Tweak for General Action Buttons */
+.btn-action {
+    padding: 6px 16px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0;
+}
+
+/* C. GLOBAL HOVER STATE */
+.btn-action:hover {
+    z-index: 20;
+    transform: translateY(-2px);
+
+    /* LIGHT Enterprise Blue Background */
+    background: #e3f2fd !important;
+    background: linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%) !important;
+
+    /* BORDER */
+    border-color: #90caf9 !important;
+    /* TEXT STAYS DARK BLUE (Readable) */
+    color: #1565c0 !important;
+    text-shadow: none !important;
+    /* Glow */
+    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.2), inset 0 1px 0 #ffffff;
+}
+
+/* D. ACTIVE STATE */
+.btn-action:active {
+    background: #e3f2fd !important;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(0) !important;
+    /* Dark Blue Text/Borders */
+    color: #1565c0 !important;
+    border-color: #1565c0 !important;
+}
+
+/* --- ARROWS --- */
+
+.nav-arrow {
+    width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* MATCH BUTTON GRADIENT & BORDERS */
+    background: linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%);
+    border: 1px solid #b0bec5;
+    border-top: 1px solid #cfd8dc;
+    /* Lighter top border for 3D effect */
+
+    /* SHADOWS & COLOR */
+    box-shadow: inset 0 1px 0 #ffffff;
+    color: #546e7a;
+    font-size: 10px;
+    /* Smaller arrow graphic */
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 5;
+}
+
+.nav-arrow:hover {
+    background: #e3f2fd;
+    /* Light Blue Hover */
+    background: linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%);
+    border-color: #90caf9;
+    color: #1565c0;
+}
+
+.nav-arrow.hidden-arrow {
+    display: none !important;
+}
+
+/* CONFIG GEAR ICON (Restored for new buttons) */
+.btn-config-icon {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #b0bec5;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 50;
+}
+
+.btn-tile:hover .btn-config-icon {
+    opacity: 1;
+}
+
+.btn-config-icon:hover {
+    color: #1565c0 !important;
+    background-color: rgba(21, 101, 192, 0.1);
+    border-radius: 0px;
+    /* Squared Off */
+}
+
+
+/* =========================================
+   3. OUTPUT AREA & LOADING
+   ========================================= */
+.output-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+    position: relative;
+    padding-bottom: 40px;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ced4da;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#loading {
+    text-align: center;
+    margin: 60px auto 0 auto;
+    width: 80%;
+    max-width: 400px;
+    color: #6c757d;
+    background: #ffffff;
+    border: 1px solid #b0bec5;
+    border-top: 4px solid #1565c0;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.progress-track {
+    width: 60%;
+    height: 10px;
+    background-color: #f1f3f5;
+    margin: 0 auto 16px auto;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #b71c1c 0%, #ef5350 50%, #b71c1c 100%);
+    background-size: 200% 100%;
+    box-shadow: 0 0 10px rgba(239, 83, 80, 0.4);
+    transform-origin: left;
+    animation: premiumIndeterminate 2s infinite cubic-bezier(0.65, 0.815, 0.735, 0.395), shimmerGradient 2s infinite linear;
+}
+
+#loading p {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #868e96;
+    margin: 0;
+    animation: pulseText 2s infinite ease-in-out;
+}
+
+@keyframes premiumIndeterminate {
+    0% {
+        transform: translateX(-100%) scaleX(0.2);
+    }
+
+    50% {
+        transform: translateX(0%) scaleX(1);
+    }
+
+    100% {
+        transform: translateX(100%) scaleX(0.2);
+    }
+}
+
+@keyframes shimmerGradient {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+@keyframes pulseText {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+#btnCancelLoad {
+    margin-top: 20px !important;
+    background: transparent !important;
+    border: 1px solid #ced4da !important;
+    color: #868e96 !important;
+    font-weight: 500 !important;
+    border-radius: 0 !important;
+}
+
+#btnCancelLoad:hover {
+    background: #f1f3f5 !important;
+    color: #333 !important;
+}
+
+/* 1. THE MAIN BOX CONTAINER */
+.placeholder {
+    text-align: center;
+    margin-top: 30px;
+    margin-left: 10px;
+    margin-right: 10px;
+    padding: 40px 20px;
+    border-radius: 0px;
+    background: linear-gradient(180deg, #fffde7 0%, #fff9c4 100%);
+    border: 1px solid #fff59d;
+    border-top: none;
+    outline: 2px dashed #cfd8dc;
+    outline-offset: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    /* FONT UPDATE: Match ELI Header (Georgia) + Larger */
+    font-family: 'Georgia', serif;
+    font-size: 18px;
+    font-weight: 700;
+
+    color: #f57f17;
+    line-height: 1.6;
+    letter-spacing: 0.2px;
+}
+
+.placeholder::before {
+    content: "👆";
+    display: block;
+    margin: 0 auto 16px auto;
+    font-size: 32px;
+    opacity: 1;
+    filter: drop-shadow(0 4px 6px rgba(183, 28, 28, 0.15));
+    transition: transform 0.3s ease;
+
+    /* RESTORED ANIMATION */
+    animation: floatFinger 2s infinite ease-in-out;
+}
+
+/* RESTORED KEYFRAMES */
+@keyframes floatFinger {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.placeholder span {
+    display: block;
+    margin-top: 8px;
+    /* font-size: 13px !important; REMOVED */
+    font-weight: 400;
+    color: #6b7280;
+    opacity: 1 !important;
+}
+
+
+
+/* =========================================
+   5. FOOTER: ULTRA MICRO BAR (20px)
+   ========================================= */
+/* Ensure the old relative footer is hidden */
+.app-footer {
+    display: none !important;
+}
+
+#main-footer {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+
+    /* Background & Border */
+    background: #f8f9fa;
+    border-top: 1px solid #d1d5db;
+    z-index: 9999;
+
+    /* Flex Alignment */
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+
+    /* HEIGHT: 20px (Ultra Slim) */
+    height: 24px;
+    padding: 0 8px;
+
+    /* Text Styles */
+    font-size: 9px;
+    color: #6c757d;
+    line-height: 20px;
+    /* Vertically centers text */
+}
+
+/* FIX: Dropdown fits perfectly inside */
+#footerModelSelect {
+    /* HEIGHT: 18px (Fits inside 20px footer with 1px margin top/bottom) */
+    height: 18px;
+
+    /* Remove padding that causes cutoff */
+    padding: 0 0 0 2px;
+
+    /* Text Size */
+    font-size: 9px;
+    line-height: 16px;
+    /* Slightly tighter than height to center text */
+
+    /* Visuals */
+    border: 1px solid #ced4da;
+    border-radius: 2px;
+    background-color: #fff;
+    color: #495057;
+    cursor: pointer;
+
+    /* Alignment */
+    margin: 0;
+    vertical-align: middle;
+    box-sizing: border-box;
+    /* Includes border in the 18px height */
+}
+
+/* =========================================
+   4. PREMIUM RESPONSE CARDS & TOOLS
+   ========================================= */
+.response-card {
+    background: #ffffff;
+    border-left: 4px solid #00695c;
+    border-radius: 0;
+    padding: 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #333;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    animation: fadeIn 0.3s ease;
+}
+
+.clause-card {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 0;
+    margin-top: 16px;
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.clause-header {
+    background: linear-gradient(180deg, #495057 0%, #343a40 100%);
+    padding: 10px 14px;
+    border-bottom: 1px solid #212529;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clause-body {
+    padding: 20px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #111;
+    background-color: #ffffff;
+}
+
+.clause-explanation {
+    background: #f8f9fa;
+    padding: 12px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 8px;
+}
+
+.clause-explanation::before {
+    content: "💡";
+    font-size: 14px;
+}
+
+.tool-box {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tool-box:focus-within {
+    border-color: #adb5bd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.tool-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #868e96;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tool-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+}
+
+.tool-input:focus {
+    outline: none;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.1);
+}
+
+.tool-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.error-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.slide-in {
+    animation: slideInUp 0.4s ease forwards;
+    opacity: 0;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.badge {
+    background-color: #f1f3f5;
+    color: #495057;
+    padding: 4px 8px;
+    border-radius: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-high {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.badge-medium {
+    background-color: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+}
+
+.badge-low {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.text-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #adb5bd;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+.text-block,
+.fix-block {
+    padding: 12px 14px;
+    border-radius: 0;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: normal;
+    font-weight: 500;
+}
+
+.text-block {
+    background-color: #fff5f5;
+    color: #b71c1c;
+    border-left: 4px solid #ef9a9a;
+}
+
+.fix-block {
+    background-color: #f1f8e9;
+    color: #1b5e20;
+    border-left: 4px solid #a5d6a7;
+}
+
+.legal-title {
+    font-weight: 700;
+    color: #d32f2f;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.reason-text {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    border-top: 1px solid #f1f3f5;
+    padding-top: 8px;
+}
+
+.suggestion-box {
+    background-color: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 0;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #0d47a1;
+    animation: fadeIn 0.3s;
+}
+
+.card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.button-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+/* --- RE-USING btn-action FROM SECTION 2 --- */
+.btn-locate:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-apply {
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+}
+
+.btn-apply:hover {
+    background-color: #1b5e20;
+}
+
+.btn-suggest {
+    background-color: #0288d1;
+    color: white;
+    border: none;
+}
+
+.btn-suggest:hover {
+    background-color: #01579b;
+}
+
+.btn-disabled {
+    background-color: #e9ecef !important;
+    color: #adb5bd !important;
+    cursor: default !important;
+}
+
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px dashed #e9ecef;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+}
+
+.checkbox-label-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.email-check {
+    transform: scale(1.1);
+    cursor: pointer;
+    margin-right: 4px;
+}
+
+.btn-bug {
+    background: none;
+    border: none;
+    color: #c62828;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.7;
+}
+
+.btn-bug:hover {
+    opacity: 1;
+}
+
+.feedback-box {
+    margin-top: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.feedback-input {
+    flex: 1;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    padding: 6px;
+    font-size: 11px;
+}
+
+.btn-save-feedback {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 0;
+    padding: 0 10px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-save-feedback:hover {
+    background-color: #5a6268;
+}
+
+.audience-modal {
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.audience-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.audience-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.email-inline-container {
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    padding: 16px;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.email-textarea {
+    width: 100%;
+    height: 350px;
+    margin: 10px 0;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+
+/* =========================================
+   5. CHAT & CITATIONS
+   ========================================= */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 40px;
+}
+
+.chat-bubble {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+    position: relative;
+}
+
+.chat-user {
+    align-self: flex-end;
+    background-color: #e3f2fd;
+    /* Light Blue */
+    color: #0d47a1;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-ai {
+    align-self: flex-start;
+    background-color: #f1f3f4;
+    border: 1px solid #e0e0e0;
+    color: #333;
+    border-bottom-left-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.citation-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #f1f8e9;
+    color: #2e7d32;
+    border: 1px solid #c5e1a5;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    margin-right: 6px;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.citation-chip:hover {
+    background-color: #dcedc8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Skeleton Loader */
+.skeleton-box {
+    background-color: #f0f0f0;
+    height: 14px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    animation: pulseSkeleton 1.5s infinite ease-in-out;
+}
+
+.skeleton-title {
+    width: 40%;
+    height: 18px;
+    margin-bottom: 12px;
+}
+
+.skeleton-text {
+    width: 100%;
+}
+
+.skeleton-short {
+    width: 70%;
+}
+
+@keyframes pulseSkeleton {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Draft Mode Input Style */
+.input-mode-draft {
+    border-color: #d32f2f !important;
+    background-color: #fffdea !important;
+}
+
+/* --- CHAT TYPING INDICATOR --- */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 0;
+    min-width: 40px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #b0bec5;
+    /* Light Grey */
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.input-mode-rewrite {
+    border-color: #1976d2 !important;
+    background-color: #e3f2fd !important;
+    color: #0d47a1;
+}
+
+@keyframes typingBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* CONTAINER for the Data Grid */
+.deal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+    margin-bottom: 24px;
+    background: #ffffff;
+    padding: 16px;
+    border: 1px solid #e9ecef;
+}
+
+/* THE LABEL (The "Field Name") */
+.deal-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    /* Light cool gray */
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+}
+
+/* THE VALUE (The Data Points) */
+.deal-value {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1565c0;
+    line-height: 1.4;
+    border-bottom: 1px dotted #b0bec5;
+    padding-bottom: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+/* Hover Effect: Darkens and adds a subtle Colgate Red accent */
+.deal-value:hover {
+    color: #0d47a1;
+    border-bottom-color: #b71c1c;
+    background-color: rgba(21, 101, 192, 0.05);
+}
+
+/* active state (Click feedback) */
+.deal-value:active {
+    background-color: #e5e7eb;
+}
+
+/* TOAST NOTIFICATION (Floating Black Pill) */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #212529;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* RISK LOCATOR CHIP */
+.risk-source {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    color: #c62828;
+    background: #fff5f5;
+    border: 1px solid #ffcdd2;
+    padding: 1px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 6px;
+    display: inline-block;
+    vertical-align: middle;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.risk-source:hover {
+    background: #ffebee;
+    border-color: #ef9a9a;
+    opacity: 1;
+    transform: none;
+}
+
+/* SEMANTIC NAVIGATOR CHIPS */
+.nav-chip {
+    display: inline-block;
+    background: #f1f3f4;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 4px 10px;
+    border-radius: 16px;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    user-select: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-chip:hover {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-color: #90caf9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* FILE UPLOAD ZONE (Interactive) */
+.file-upload-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 4px;
+    padding: 30px;
+    text-align: center;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 10px;
+}
+
+.file-upload-zone:hover {
+    background-color: #e3f2fd;
+    /* Light Blue on Hover */
+    border-color: #1976d2;
+    transform: translateY(-2px);
+}
+
+.file-upload-zone:active {
+    background-color: #bbdefb;
+    transform: translateY(0);
+}
+
+/* --- BUTTON STACKING LOGIC --- */
+.btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100%;
+}
+
+/* The Half-Height Button Style */
+.half-tile {
+    flex: 1;
+    flex-direction: row;
+    padding: 0 8px;
+    gap: 8px;
+    min-height: 0;
+    border-bottom-width: 1px;
+}
+
+.half-tile:hover {
+    border-bottom-width: 1px;
+}
+
+.tile-icon-small {
+    font-size: 14px;
+    filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 1));
+}
+
+.tile-label-small {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* COMPARE BUTTON COLOR (Orange/Amber for Contrast) */
+.tile-compare:hover {
+    background: linear-gradient(to bottom, #fff8e1 0%, #ffecb3 100%);
+    border-color: #ff8f00;
+    color: #ff8f00;
+}
+
+.tile-compare:hover .tile-icon-small {
+    filter: drop-shadow(0 2px 4px rgba(255, 143, 0, 0.3));
+}
+
+.auto-expand {
+    min-height: 38px;
+    resize: none;
+    overflow-y: hidden;
+    line-height: 1.5;
+    field-sizing: content;
+    transition: height 0.1s ease;
+    font-family: inherit;
+}
+
+/* Subtle pulse animation for the status badge when auto-checking */
+.status-checking {
+    background-color: #1565c0 !important;
+    animation: pulseBlue 2s infinite;
+}
+
+
+
+
+/* =========================================
+   6. LAPTOP MODE (COMPACT & FIXED)
+   ========================================= */
+
+/* 1. Header Adjustments (Slimmer) */
+body.compact-mode .header {
+    margin-bottom: 0 !important;
+    padding: 4px 12px !important;
+}
+
+body.compact-mode .brand-icon-box {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+body.compact-mode .brand-icon {
+    font-size: 14px !important;
+}
+
+body.compact-mode .app-label {
+    font-size: 12px !important;
+}
+
+/* 2. Button Container (Allow Tooltips + Fix Height) */
+body.compact-mode .button-group {
+    min-height: 28px !important;
+    height: 28px !important;
+    margin-top: 2px !important;
+    margin-bottom: 5px !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+}
+
+/* 3. ARROWS: Match Button Height */
+body.compact-mode .nav-arrow {
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    font-size: 10px !important;
+    flex: 0 0 24px !important;
+    width: 24px !important;
+    padding: 0 !important;
+    border-radius: 2px !important;
+}
+
+body.compact-mode .nav-arrow.hidden-arrow {
+    display: none !important;
+}
+
+/* 4. BUTTONS: Compact & Icon Only */
+body.compact-mode .btn-tile {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 1;
+}
+
+/* 5. ICONS: Smaller */
+body.compact-mode .tile-icon {
+    font-size: 14px !important;
+    margin: 0 !important;
+    filter: none !important;
+}
+
+/* 6. TOOLTIPS (The Hover Text) */
+body.compact-mode .tile-label {
+    position: absolute !important;
+    top: 34px !important;
+    /* 28px button + gap */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background-color: #263238 !important;
+    /* Dark Slate */
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    padding: 4px 8px !important;
+    border-radius: 3px !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+    z-index: 9999 !important;
+    text-align: center !important;
+    width: auto !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity 0.15s ease !important;
+}
+
+/* 7. HOVER EFFECTS */
+body.compact-mode .btn-tile:hover {
+    z-index: 100 !important;
+    background-color: #fff !important;
+    border-color: #1565c0 !important;
+}
+
+body.compact-mode .btn-tile:active,
+body.compact-mode .active-tool {
+    transform: none !important;
+    /* Prevent shifting down */
+}
+
+body.compact-mode .btn-tile:hover .tile-label {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* 8. Settings Button Fixes (Keep Gear Visible) */
+body.compact-mode #btnHeaderSettings {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+}
+
+body.compact-mode .settings-text,
+body.compact-mode .status-dot {
+    display: none !important;
+}
+
+body.compact-mode .settings-icon {
+    display: block !important;
+    font-size: 14px !important;
+    visibility: visible !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* =========================================
+   7. SMART COLLAPSE TOOLBAR (Enterprise Dock)
+   ========================================= */
+
+/* HIDDEN STATE */
+.button-group.collapsed {
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+    min-height: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden;
+}
+
+#toolbarExpander {
+    display: none;
+    position: relative;
+    width: 100%;
+    z-index: 900;
+    margin-top: 0px;
+    margin-bottom: 15px;
+
+    /* ULTRA SLIM HEIGHT */
+    height: 14px !important;
+    line-height: 14px !important;
+    padding: 0 !important;
+    min-height: 14px !important;
+
+    /* MATCHING PLATINUM GRADIENT */
+    background: linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%);
+    border-bottom: 1px solid #b0bec5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    text-align: center;
+    cursor: pointer;
+    color: #546e7a;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    animation: slideDownFade 0.3s ease forwards;
+}
+
+#toolbarExpander:hover {
+    background-color: #f5f9ff;
+    color: #0d47a1;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#toolbarExpander.visible {
+    display: block !important;
+}
+
+/* 9. Hide Footer in Laptop Mode */
+/* 9. Hide Footer in Laptop Mode (DISABLED) */
+
+
+
+/* =========================================
+   8. PREMIUM SETTINGS MENU (Main)
+   ========================================= */
+#settingsMenu {
+    position: absolute;
+    top: 60px;
+    right: 15px;
+    width: 260px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    overflow: hidden;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+.settings-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.settings-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #37474f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-close-x {
+    cursor: pointer;
+    font-size: 14px;
+    color: #90a4ae;
+    font-weight: bold;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.settings-close-x:hover {
+    color: #d32f2f;
+}
+
+.settings-body {
+    padding: 8px 0;
+}
+
+.settings-group-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #b0bec5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px 6px 16px;
+    margin-top: 4px;
+}
+
+.settings-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 16px;
+    /* Reduced from 8px */
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+    color: #455a64;
+}
+
+.settings-item-row:hover {
+    background: #f1f3f5;
+}
+
+.settings-action-btn {
+    display: block;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1565c0;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-action-btn:hover {
+    background: #e3f2fd;
+}
+
+.settings-action-btn.danger {
+    color: #c62828;
+    border-top: 1px solid #eee;
+    margin-top: 5px;
+}
+
+.settings-action-btn.danger:hover {
+    background: #ffebee;
+}
+
+/* --- KNOWLEDGE SCOPE TOGGLE --- */
+.scope-toggle-container {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.scope-toggle {
+    background: #e0e0e0;
+    border-radius: 20px;
+    padding: 2px;
+    display: flex;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.scope-btn {
+    border: none;
+    background: transparent;
+    padding: 4px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+}
+
+.scope-btn.active {
+    background: #fff;
+    color: #1565c0;
+    /* Enterprise Blue */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-weight: 700;
+}
+
+.scope-btn:hover:not(.active) {
+    color: #333;
+}
+
+/* --- COMPACT SLIDER SWITCH --- */
+.switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 18px;
+}
+
+.switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+input:checked+.slider {
+    background-color: #1565c0;
+}
+
+input:checked+.slider:before {
+    transform: translateX(16px);
+}
+
+
+/* =========================================
+   9. ENTERPRISE HELP CENTER
+   ========================================= */
+.help-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 20000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.help-modal {
+    width: 90%;
+    max-width: 800px;
+    height: 85vh;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.help-header {
+    background: #1e293b;
+    color: white;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+}
+
+.help-title {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.help-close {
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 20px;
+    transition: opacity 0.2s;
+}
+
+.help-close:hover {
+    opacity: 1;
+}
+
+.help-tabs {
+    display: flex;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.help-tab {
+    flex: 1;
+    text-align: center;
+    padding: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+
+.help-tab.active {
+    background: white;
+    color: #0f172a;
+    border-bottom-color: #1565c0;
+}
+
+.help-tab:hover:not(.active) {
+    background: #e2e8f0;
+}
+
+.help-body {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+    display: none;
+}
+
+.help-body.active {
+    display: block;
+}
+
+/* FAQ Styles */
+.faq-item {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.faq-question {
+    padding: 16px 24px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    color: #334155;
+    font-size: 14px;
+}
+
+.faq-question:hover {
+    background: #f8fafc;
+}
+
+.faq-answer {
+    padding: 0 24px 16px 24px;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.6;
+    display: none;
+}
+
+.faq-item.open .faq-answer {
+    display: block;
+}
+
+.faq-item.open .faq-question {
+    color: #1565c0;
+}
+
+/* Tutorial Styles */
+.tut-slide {
+    padding: 40px;
+    text-align: center;
+}
+
+.tut-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.tut-head {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.tut-text {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.6;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* Chat Styles */
+.support-chat-area {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+}
+
+.support-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.support-input-area {
+    padding: 16px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+}
+
+
+
+/* --- FLOATING TOOLTIP --- */
+.toolbar-tooltip {
+    position: fixed;
+    background: #263238;
+    /* Slate Dark */
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    max-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 20000;
+    animation: fadeIn 0.2s ease;
+    pointer-events: none;
+}
+
+.toolbar-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #263238 transparent transparent transparent;
+}
+
+/* =========================================
+   FIX: PLAYBOOK FALLBACK CARD OVERRIDES
+   ========================================= */
+/* This targets .btn-action only when it is inside a fallback container or response card.
+   It undoes the "Platinum Toolbar" styles so the cards look like cards again. */
+
+.response-card .btn-action,
+[id^="fb_container_"] .btn-action {
+    display: block !important;
+    /* Fixes layout: Allows multi-line text */
+    text-transform: none !important;
+    /* Fixes readability: Removes ALL CAPS */
+    height: auto !important;
+    /* Fixes height: Allows card to grow with text */
+    background-image: none !important;
+    /* Removes the silver gradient */
+    align-items: flex-start !important;
+    /* Aligns text to top, not center */
+    white-space: normal !important;
+    /* Allows text wrapping */
+    letter-spacing: normal !important;
+    /* Standard text spacing */
+
+    /* Ensure the text color uses the specific logic we set in JS, not the default gray */
+    color: inherit;
+}
+
+/* Fix the number badge alignment inside these cards */
+.response-card .num-badge,
+[id^="fb_container_"] .num-badge {
+    margin-top: 2px !important;
+    /* Aligns badge with the first line of text */
+}
+
+/* =========================================
+   PREMIUM "SQUARED PLATINUM SIDEBAR"
+   ========================================= */
+
+/* 1. Base Styling (Hidden State) */
+/* 1. Base Styling (Hidden State) */
+.btn-config-icon,
+.btn-info-icon {
+    /* Positioning: Lock to RIGHT edge */
+    position: absolute !important;
+    right: 2px !important;
+    /* Far Right */
+    left: auto !important;
+
+    /* Size: Larger touch target */
+    width: 16px !important;
+    height: 14px !important;
+
+    /* Layout */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 20;
+
+    /* VISUALS: USER REQUESTED BOX (MORE TRANSPARENT) */
+    background: rgba(255, 255, 255, 0.5) !important;
+    color: #455a64 !important;
+    /* Slate Icon (Matches Settings Gear) */
+    font-size: 11px !important;
+    border-radius: 0px !important;
+    /* SQUARED OFF */
+
+    /* Borders: Fainter */
+    border: 1px solid rgba(69, 90, 100, 0.3) !important;
+    /* Subtle Slate Border */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+
+    /* ANIMATION: Fade in */
+    opacity: 0 !important;
+    transform: scale(0.8);
+    transition: all 0.15s ease-out;
+}
+
+/* 2. SETTINGS ICON (Top Right) */
+.btn-config-icon {
+    top: 2px !important;
+    right: 2px !important;
+    bottom: auto !important;
+    left: auto !important;
+}
+
+/* 3. INFO ICON (Bottom Right) */
+.btn-info-icon {
+    bottom: 2px !important;
+    right: 2px !important;
+    top: auto !important;
+    left: auto !important;
+}
+
+/* 4. REVEAL: Pop in when hovering the main button */
+.btn-tile:hover .btn-config-icon,
+.btn-tile:hover .btn-info-icon {
+    opacity: 1 !important;
+    transform: scale(1);
+}
+
+/* 5. HOVER STATE: Zoom/Color only (No Container) */
+/* 5. HOVER STATE: Light Blue Background + White Border */
+.btn-config-icon:hover,
+.btn-info-icon:hover {
+    background: #e3f2fd !important;
+    /* Light Blue Background */
+    color: #1565c0 !important;
+    /* Enterprise Blue Icon */
+    border: 1px solid #ffffff !important;
+    /* Premium White Border */
+
+    /* Standard interactive properties */
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    text-shadow: none;
+    border-radius: 0px !important;
+    /* SQUARED OFF */
+}
+
+/* 6. CLICK STATE */
+.btn-config-icon:active,
+.btn-info-icon:active {
+    transform: scale(0.9);
+}
+
+/* =========================================
+   FIX: SOLO ICON LAYOUT (When no Gear exists)
+   ========================================= */
+
+/* If only info exists, keep it top right (default) */
+/* If only info exists, keep it top right (default) */
+.btn-info-icon:only-of-type {
+    top: 4px !important;
+    height: 14px !important;
+    border-bottom: 1px solid #cfd8dc !important;
+    /* Restore normal border */
+}
+
+/* Class to add via JS to the active side text */
+.tog-label.active-text {
+    color: #1565c0;
+    /* Enterprise Blue text when active */
+    text-shadow: none;
+}
+
+/* =========================================
+   PREMIUM AI DRAFTER BUTTON STYLES
+   ========================================= */
+.btn-ai-trigger {
+    /* Default State: Deep Professional Blue */
+    background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    /* Slight rounding for modern feel */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16) !important;
+
+    /* Animation Timing */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+
+    /* Required for the shine effect */
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* =========================================
+   PREMIUM AI DRAFTER BUTTON (SQUARED)
+   ========================================= */
+.btn-ai-trigger {
+    /* Default State: Deep Professional Blue */
+    background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+    color: #ffffff !important;
+
+    /* SQUARED OFF CORNERS */
+    border-radius: 0px !important;
+
+    border: none !important;
+    /* Restored border:none to prevent base width change */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16) !important;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Hover State: Brighter, Lifted, Glowing */
+/* Hover State: Brighter, Lifted, Glowing */
+.btn-ai-trigger:hover {
+    background: linear-gradient(135deg, #42a5f5 0%, #1565c0 100%) !important;
+    transform: none !important;
+    border: none !important;
+    /* No Border to prevent resize */
+    outline: 1px solid #c9a227 !important;
+    /* Use Outline for Gold Border */
+    outline-offset: -1px;
+    /* Draw inside */
+    box-shadow: 0 4px 8px rgba(21, 101, 192, 0.25) !important;
+}
+
+/* Active Click State */
+.btn-ai-trigger:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Shine Effect */
+.btn-ai-trigger::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: skewX(-20deg);
+    transition: 0s;
+    z-index: 2;
+}
+
+.btn-ai-trigger:hover::after {
+    left: 150%;
+    transition: 0.6s ease-in-out;
+}
+
+/* =========================================
+   SQUARED PLATINUM CHAT BUTTONS
+   ========================================= */
+.tool-btn-premium {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+
+    /* PLATINUM GRADIENT */
+    background: linear-gradient(to bottom, #ffffff 0%, #eceff1 100%);
+
+    /* SHARP CORNERS */
+    border-radius: 0px !important;
+
+    /* CRISP BORDERS */
+    border: 1px solid #b0bec5;
+    border-bottom: 2px solid #90a4ae;
+    /* Thicker bottom for 3D tactile feel */
+
+    /* TYPOGRAPHY */
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    color: #546e7a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tool-btn-premium:hover {
+    /* LIGHT BLUE HOVER (Enterprise Theme) */
+    background: linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%);
+    border-color: #64b5f6;
+    border-bottom-color: #1976d2;
+    color: #1565c0;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.tool-btn-premium:active {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+    background: #e3f2fd;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Active Mode State (When clicked) */
+.tool-btn-premium.active-mode {
+    background: #e8f5e9;
+    /* Light Green Bg */
+    color: #2e7d32;
+    /* Green Text */
+    border-color: #a5d6a7;
+    border-bottom-color: #2e7d32;
+}
+
+/* =========================================
+   SQUARED SETTINGS MENU
+   ========================================= */
+
+/* 1. Main Container */
+#settingsMenu {
+    border-radius: 0px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #b0bec5 !important;
+}
+
+/* 2. Header Row (Reset top corners) */
+.settings-header-row {
+    border-radius: 0px !important;
+    background: #eceff1 !important;
+    /* Platinum header background */
+    border-bottom: 1px solid #cfd8dc !important;
+}
+
+/* 3. Action Buttons inside menu */
+.settings-action-btn {
+    border-radius: 0px !important;
+}
+
+/* 4. Language Selector */
+#selLanguage {
+    border-radius: 0px !important;
+}
+
+/* 5. Scope Toggle Container (Optional: keeps the toggle pill-shaped, but squares the box) */
+.scope-toggle-container {
+    border-radius: 0px !important;
+}
+
+/* =========================================
+   CUSTOMIZE TOOLBAR UI (COMPACT & SWAP)
+   ========================================= */
+
+/* Compact Row Style */
+.config-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 4px;
+    transition: all 0.2s;
+}
+
+.config-row:hover {
+    border-color: #b0bec5;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.config-row.hidden-item {
+    opacity: 0.6;
+    background: #fcfcfc;
+    border-style: dashed;
+}
+
+/* Page Headers */
+.config-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: #546e7a;
+    margin: 15px 0 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #eceff1;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Action Buttons (Tiny) */
+.btn-config-action {
+    background: transparent;
+    border: 1px solid #cfd8dc;
+    border-radius: 0px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #455a64;
+    cursor: pointer;
+    margin-left: 4px;
+    transition: all 0.1s;
+}
+
+.btn-config-action:hover {
+    background: #eceff1;
+    color: #1565c0;
+    border-color: #90caf9;
+}
+
+.btn-config-action.delete:hover {
+    background: #ffebee;
+    color: #c62828;
+    border-color: #ef9a9a;
+}
+
+/* Swap Modal Items */
+.swap-item {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 6px;
+    cursor: pointer;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #37474f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.1s;
+}
+
+.swap-item:hover {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    color: #1565c0;
+}
+
+/* =========================================
+   PLATINUM CONFIGURATION BUTTONS
+   ========================================= */
+
+/* The Base Platinum Style */
+.btn-platinum-config {
+    background: linear-gradient(to bottom, #ffffff 0%, #eceff1 100%);
+    border: 1px solid #b0bec5;
+    border-bottom: 2px solid #90a4ae;
+    /* Tactile 3D edge */
+    border-radius: 0px !important;
+    /* STRICT SQUARED */
+
+    font-family: 'Book Antiqua', serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: #546e7a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+/* Hover: Brighten & Lift */
+/* Hover: Brighten & Lift */
+.btn-platinum-config:hover {
+    background: #e3f2fd;
+    border: 1px solid #c9a227;
+    color: #1565c0;
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Active: Press Down */
+.btn-platinum-config:active {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+    background: #e3f2fd;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Specific: Delete/Hide Button (Red Accent on Hover) */
+.btn-platinum-config.delete:hover {
+    color: #c62828;
+    border-color: #ef9a9a;
+    border-bottom-color: #c62828;
+    background: linear-gradient(to bottom, #fff 0%, #ffebee 100%);
+}
+
+/* Specific: Save/Primary Button (Blue Accent) */
+.btn-platinum-config.primary {
+    border-bottom: 2px solid #1565c0;
+    color: #1565c0;
+    font-size: 11px;
+    padding: 10px;
+}
+
+/* =========================================
+   DENTAL LOADER: THE COMPACT FULL MOUTH
+   ========================================= */
+.mouth-container {
+    position: relative;
+    width: 80px;
+    /* Much smaller width */
+    height: 50px;
+    /* Much smaller height */
+    background: #8a0000;
+    /* Dark Red (Inside Mouth) */
+    border: 4px solid #ef5350;
+    /* Pink Lips/Gums */
+    border-radius: 25px;
+    /* Oval/Pill Shape */
+    display: flex;
+    flex-direction: column;
+    /* Stack Upper and Lower rows */
+    justify-content: space-between;
+    /* Push teeth to top/bottom */
+    align-items: center;
+    overflow: hidden;
+    /* Keep teeth inside */
+    margin: 0 auto 15px auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.teeth-row {
+    display: flex;
+    gap: 2px;
+    padding: 0 10px;
+    /* Spacing from sides */
+}
+
+/* Upper Teeth */
+.teeth-row.upper .tooth {
+    border-radius: 0 0 4px 4px;
+    /* Round bottom */
+    border-top: none;
+}
+
+/* Lower Teeth */
+.teeth-row.lower .tooth {
+    border-radius: 4px 4px 0 0;
+    /* Round top */
+    border-bottom: none;
+}
+
+.tooth {
+    width: 8px;
+    /* Smaller teeth */
+    height: 12px;
+    background: #ffffff;
+    border: 1px solid #cfd8dc;
+}
+
+/* The Toothbrush */
+.brush-anim {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 24px;
+    /* Smaller Brush */
+    z-index: 10;
+    /* Animate scrubbing the middle */
+    animation: scrubCompact 0.4s infinite ease-in-out alternate;
+    transform-origin: center center;
+    margin-top: -18px;
+    /* Center adjustment */
+    margin-left: -12px;
+}
+
+/* Bubbles/Foam */
+.foam {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #e3f2fd;
+    border-radius: 50%;
+    opacity: 0;
+    z-index: 5;
+    animation: foamPopSmall 1s infinite;
+}
+
+.f1 {
+    left: 20px;
+    top: 20px;
+    animation-delay: 0s;
+}
+
+.f2 {
+    left: 40px;
+    top: 15px;
+    animation-delay: 0.3s;
+}
+
+.f3 {
+    left: 60px;
+    top: 25px;
+    animation-delay: 0.6s;
+}
+
+@keyframes scrubCompact {
+    0% {
+        transform: translateX(-15px) rotate(-10deg);
+    }
+
+    100% {
+        transform: translateX(15px) rotate(10deg);
+    }
+}
+
+@keyframes foamPopSmall {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.2) translateY(-10px);
+        opacity: 0;
+    }
+}
+
+/* --- ONBOARDING TOUR ANIMATION STYLES --- */
+.tour-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f4f6f8;
+    z-index: 30000;
+    /* Higher than everything */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tour-stage {
+    width: 100%;
+    max-width: 400px;
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+}
+
+/* Typography */
+.tour-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1565c0;
+    margin-bottom: 10px;
+    font-family: 'Segoe UI', sans-serif;
+    animation: tourSlideUp 0.8s ease;
+}
+
+.tour-subtitle {
+    font-size: 13px;
+    color: #546e7a;
+    line-height: 1.5;
+    max-width: 80%;
+    margin: 0 auto;
+    animation: tourFadeIn 1s ease 0.3s forwards;
+    opacity: 0;
+}
+
+/* Animation Keyframes */
+@keyframes tourSlideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes tourFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes tourScaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* SCENE ASSETS */
+.gavel-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+    animation: hammer 2s infinite;
+    position: relative;
+}
+
+.gavel-ripple {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #1565c0;
+    opacity: 0;
+    animation: ripple 2s infinite 0.9s;
+}
+
+@keyframes hammer {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    30% {
+        transform: rotate(-25deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        width: 0;
+        opacity: 1;
+    }
+
+    100% {
+        width: 120px;
+        opacity: 0;
+    }
+}
+
+.block-container {
+    height: 80px;
+    width: 60px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+    margin: 0 auto 20px auto;
+}
+
+.block {
+    width: 100%;
+    height: 15px;
+    background: #90caf9;
+    border-radius: 2px;
+    opacity: 0;
+    animation: dropStack 0.5s forwards;
+}
+
+.block:nth-child(1) {
+    background: #1565c0;
+    animation-delay: 0.1s;
+}
+
+.block:nth-child(2) {
+    background: #42a5f5;
+    animation-delay: 0.3s;
+}
+
+.block:nth-child(3) {
+    background: #90caf9;
+    animation-delay: 0.5s;
+}
+
+.block:nth-child(4) {
+    background: #e3f2fd;
+    animation-delay: 0.7s;
+}
+
+@keyframes dropStack {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.book-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+    position: relative;
+    animation: bookFloat 3s ease-in-out infinite;
+}
+
+.ai-badge {
+    font-size: 20px;
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: #fff;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    animation: popBadge 0.5s forwards 0.5s;
+    opacity: 0;
+    transform: scale(0);
+}
+
+@keyframes bookFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes popBadge {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.doc-scan {
+    width: 60px;
+    height: 80px;
+    background: #fff;
+    border: 2px solid #ccc;
+    margin: 0 auto 20px auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.scan-line {
+    width: 100%;
+    height: 4px;
+    background: #fbc02d;
+    position: absolute;
+    top: 0;
+    left: 0;
+    box-shadow: 0 0 10px #fbc02d;
+    animation: scanMove 2s infinite linear;
+}
+
+.bug-dot {
+    width: 8px;
+    height: 8px;
+    background: #c62828;
+    border-radius: 50%;
+    position: absolute;
+    top: 40px;
+    left: 30px;
+    opacity: 0;
+    animation: bugFlash 2s infinite;
+}
+
+@keyframes scanMove {
+    0% {
+        top: 0;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+@keyframes bugFlash {
+
+    0%,
+    40% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    60% {
+        opacity: 0;
+    }
+}
+
+.redline-box {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.txt-del {
+    text-decoration: line-through;
+    color: #c62828;
+    animation: fadeStrike 2s forwards 0.5s;
+    opacity: 1;
+}
+
+.txt-add {
+    color: #2e7d32;
+    opacity: 0;
+    animation: fadeInAdd 1s forwards 1.5s;
+    transform: translateX(-20px);
+}
+
+@keyframes fadeStrike {
+    to {
+        opacity: 0.3;
+    }
+}
+
+@keyframes fadeInAdd {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.plane-icon {
+    font-size: 60px;
+    margin-bottom: 20px;
+    display: inline-block;
+    animation: flyAway 2.5s ease-in-out forwards;
+}
+
+@keyframes flyAway {
+    0% {
+        transform: scale(1);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(100px, -100px) rotate(20deg) scale(0.5);
+        opacity: 0;
+    }
+}
+
+.final-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 900;
+    margin: 0 auto 20px auto;
+    animation: pulseBlue 2s infinite;
+}
+
+.tour-btn {
+    background: #c9a227;
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 20px;
+    animation: tourScaleIn 0.5s forwards 0.5s;
+    opacity: 0;
+    border-radius: 0px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.tour-btn:hover {
+    background: #fdd835;
+}
+
+@keyframes pulseBlueScale {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(21, 101, 192, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 20px rgba(21, 101, 192, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(21, 101, 192, 0);
+    }
+}
+
+/* Premium Insert Button (AI Dialog) */
+.btn-insert-premium {
+    background: linear-gradient(to bottom, #66bb6a 0%, #43a047 100%);
+    color: white;
+    border: 1px solid #2e7d32;
+    border-radius: 0px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+}
+
+.btn-insert-premium:hover {
+    background: linear-gradient(to bottom, #81c784 0%, #4caf50 100%);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-insert-premium:active {
+    background: #388e3c;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    transform: translateY(1px);
+}
+
+/* 10. HOST: Laptop Mode Overrides */
+
+/* A. HIDE Right Footer Section */
+body.compact-mode #footerRight {
+    display: none !important;
+}
+
+/* B. MOVE Center Buttons to Right & Shrink Height */
+body.compact-mode #footerCenter {
+    position: static !important;
+    transform: none !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    padding-right: 8px;
+}
+
+/* 3. INJECT Abbreviated Text via Pseudo-Elements */
+body.compact-mode #footSegDraft::after {
+    content: "D";
+    font-size: 9px;
+    font-weight: 800;
+}
+
+body.compact-mode #footSegAll::after {
+    content: "A";
+    font-size: 9px;
+    font-weight: 800;
+}
+
+body.compact-mode #footSegReview::after {
+    content: "R";
+    font-size: 9px;
+    font-weight: 800;
+}
+
+body.compact-mode .footer-seg-btn {
+    font-size: 0 !important;
+    /* Hides the text "Draft" */
+    padding: 0 !important;
+    /* Remove padding */
+    width: 20px !important;
+    /* Fixed tiny width */
+    height: 16px !important;
+    /* Match container height */
+    line-height: 16px !important;
+    text-align: center;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* C. HEADER: Halve Size & Rearrange Layout */
+body.compact-mode .header {
+    height: 32px !important;
+    padding: 0 8px !important;
+    border-bottom-width: 2px !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+}
+
+/* BRAND GROUP: Must be 100% width to allow Gear to push right */
+body.compact-mode .brand-group {
+    width: 100% !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    gap: 0px !important;
+    flex-grow: 1 !important;
+}
+
+body.compact-mode .brand-icon-box {
+    display: none !important;
+}
+
+body.compact-mode .brand-ai-logo {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* FLEX ORDER: ELI First, User Name Second */
+body.compact-mode .brand-titles {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0px !important;
+    /* Zero gap, control via margin */
+}
+
+/* 1. ELI LABEL (First) */
+body.compact-mode .app-label {
+    order: 1 !important;
+    font-size: 14px !important;
+    margin: 0 !important;
+    margin-right: 3px !important;
+    /* Tiny gap to name */
+}
+
+body.compact-mode .long-title {
+    display: none !important;
+}
+
+/* 2. USER NAME (Second) */
+body.compact-mode .company-label {
+    order: 2 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+/* 3. PARENTHESES & USER NAME */
+body.compact-mode #headerMyName {
+    font-size: 11px !important;
+    color: #ffffff !important;
+    font-weight: 400 !important;
+    opacity: 0.8 !important;
+    text-transform: none !important;
+    display: inline-block !important;
+    line-height: normal !important;
+}
+
+body.compact-mode #headerMyName::before {
+    content: "(";
+    margin-right: 1px;
+}
+
+body.compact-mode #headerMyName::after {
+    content: ")";
+    margin-left: 1px;
+}
+
+/* D. SETTINGS BUTTON: Pushed to Far Right */
+body.compact-mode #btnHeaderSettings {
+    height: 24px !important;
+    width: 24px !important;
+    margin-left: auto !important;
+    /* Pushes to Right Edge because parent is 100% */
+}
+
+/* E. TOOLBAR BUTTONS: Ultra Compact (User: 20px) */
+body.compact-mode .button-group {
+    height: 30px !important;
+    min-height: 0 !important;
+    margin-top: -4px !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 0 !important;
+    border-bottom-width: 2px !important;
+}
+
+body.compact-mode .btn-tile {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    /* Strict Center */
+    align-items: center !important;
+    padding: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+}
+
+body.compact-mode .tile-icon {
+    font-size: 14px !important;
+    line-height: 1 !important;
+    height: auto !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+body.compact-mode .tile-label {
+    font-size: 9px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    font-weight: 700 !important;
+    margin-top: 2px !important;
+}
+
+
+
+/* F. HOVER & TOOLTIP COLORS (High Contrast Fix) */
+/* 1. Button Hover - DARK BLUE BG for Contrast */
+body.compact-mode .btn-tile:hover {
+    background: #1565c0 !important;
+    /* Dark Blue */
+    border-color: #0d47a1 !important;
+}
+
+body.compact-mode .btn-tile:hover .tile-icon,
+body.compact-mode .btn-tile:hover .tile-label {
+    color: #ffffff !important;
+    /* White Text */
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+/* 2. Tooltip (Ultra Readable & Larger) */
+/* 1. BUTTON HOVER TEXT (The label that appears when mouse over a button) */
+body.compact-mode .tile-label {
+    font-size: 12px !important;
+    /* Reduced from 18px -> 12px */
+    font-weight: 700 !important;
+    padding: 6px 10px !important;
+    /* Tighter padding */
+    top: 28px !important;
+    /* Adjusted position */
+    min-width: auto !important;
+    /* Auto width instead of fixed large width */
+    white-space: nowrap !important;
+    /* Keep on one line */
+
+    background-color: #263238 !important;
+    /* Dark Slate (Standard) */
+    color: white !important;
+    border: 1px solid #455a64 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    z-index: 99999 !important;
+}
+
+/* INNER HEADER: Override Dark Gradient with White */
+body.compact-mode #activeTooltip>div:first-child {
+    background: #ffffff !important;
+    padding: 24px !important;
+    border-bottom: none !important;
+}
+
+/* CLOSE BUTTON */
+body.compact-mode #activeTooltip #btnCloseTip {
+    color: #000000 !important;
+    font-size: 28px !important;
+    top: 8px !important;
+    right: 8px !important;
+}
+
+/* LABEL: nth-child(2) */
+body.compact-mode #activeTooltip>div:first-child>div:nth-child(2) {
+    color: #000000 !important;
+    /* Force Black */
+    font-size: 26px !important;
+    /* Huge Label */
+    font-weight: 900 !important;
+    margin-bottom: 12px !important;
+    text-shadow: none !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* DESC: nth-child(3) */
+body.compact-mode #activeTooltip>div:first-child>div:nth-child(3) {
+    color: #37474f !important;
+    /* Dark Grey */
+    font-size: 18px !important;
+    /* Large Desc */
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+
+/* G. FOOTER CLEANUP (Laptop Mode) */
+body.compact-mode #footerLeft,
+body.compact-mode #footerCenter {
+    display: none !important;
+}
+
+body.compact-mode #footerRight {
+    display: flex !important;
+    margin-left: auto !important;
+    width: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Hide 'Ask AI' Button in compact mode to focus on text? 
+   Or scale it up. Let's scale it. */
+body.compact-mode #activeTooltip #btnGoToSupport {
+    padding: 16px !important;
+    font-size: 14px !important;
+}
+
+/* Arrow (Smaller to Match Button Height) */
+body.compact-mode .toolbar-tooltip::after,
+body.compact-mode #activeTooltip::after {
+    border-color: #ffffff transparent transparent transparent !important;
+    border-width: 4px !important;
+    /* Reduced from 8px to 4px */
+    margin-left: -4px !important;
+    /* Reduced from -8px to -4px */
+}
+
+/* Scroll Arrows (Match Button Height) */
+body.compact-mode .nav-arrow {
+    height: 100% !important;
+    width: 8px !important;
+    /* Ultra Narrow */
+    font-size: 5px !important;
+    /* Nano Arrow */
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+
+/* ==========================================================================
+   LAPTOP MODE: FORCE SMALL ARROWS (FIX)
+   ========================================================================== */
+
+body.compact-mode .nav-arrow {
+    /* 1. Force Dimensions */
+    height: 28px !important;
+    /* Explicit height */
+    width: 12px !important;
+    /* Explicit width */
+    flex: 0 0 24px !important;
+    /* Prevent flexbox from stretching/shrinking it */
+
+    /* 2. Visual Tweaks */
+    font-size: 10px !important;
+    /* Larger arrow icon */
+    line-height: 14px !important;
+    /* Center text vertically */
+    border-radius: 2px !important;
+
+    /* 3. CRITICAL ALIGNMENT FIX */
+    align-self: center !important;
+    /* Forces the arrow to sit in the vertical center of the bar */
+    margin: 0 !important;
+    /* Remove any top/bottom margins causing offsets */
+}
+
+/* ==========================================================================
+   LAPTOP MODE: TIGHTER HEADER TEXT
+   ========================================================================== */
+
+body.compact-mode .brand-titles {
+    gap: 0px !important;
+    /* Ensure zero gap between flex items */
+}
+
+
+
+/* ==========================================================================
+   LAPTOP MODE: FORCE HEADER TEXT TOGETHER
+   ========================================================================== */
+
+/* 1. Remove ALL spacing to the right of "ELI" */
+body.compact-mode .app-label {
+    margin-right: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* 2. Remove spacing on the parent wrapper of the name */
+/* We also reset letter-spacing to 0 to kill hidden character widths */
+body.compact-mode .company-label {
+    margin-left: 6px !important;
+    /* Pull it closer (Negative Margin) */
+    padding-left: 0px !important;
+    letter-spacing: 0px !important;
+}
+
+/* 3. Ensure the name itself has no extra left margin */
+body.compact-mode #headerMyName {
+    margin-left: 0px !important;
+    padding-left: 0px !important;
+}
+
+/* ==========================================================================
+   LAPTOP MODE: FOOTER ADJUSTMENTS (FIX)
+   ========================================================================== */
+
+/* 1. HIDE the Right Footer elements (ELI v3.1 + Spec Dropdown) */
+body.compact-mode #footerRight {
+    display: none !important;
+}
+
+/* 2. MOVE the Center Buttons to the RIGHT */
+body.compact-mode #footerCenter {
+    /* Reset Centering */
+    left: auto !important;
+    transform: none !important;
+
+    /* Dock to Right */
+    right: 8px !important;
+
+    /* Ensure it doesn't overlap text */
+    justify-content: flex-end !important;
+}
+
+/* ==========================================================================
+   LAPTOP MODE: FOOTER FIX (SHOW VERSION HISTORY)
+   ========================================================================== */
+
+/* 1. FORCE SHOW the Right Footer (Version History & Snapshot) */
+/* 1. FORCE SHOW the Right Footer (Version History & Snapshot) */
+body.compact-mode #footerRight {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    margin-left: auto !important;
+    background: transparent !important;
+    pointer-events: auto !important;
+}
+
+/* HIDE DIVIDERS in Compact Mode */
+body.compact-mode .footer-divider-right,
+body.compact-mode #main-footer>div:first-child>div:nth-child(2) {
+    display: none !important;
+}
+
+/* 2. HIDE the Center Toggles (Draft/All/Review) */
+/* 2. HIDE the Center Toggles (Draft/All/Review) */
+/* 1. FORCE SHOW the Center Container & Center it */
+body.compact-mode #footerCenter {
+    display: flex !important;
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: auto !important;
+    right: auto !important;
+    /* Reset any right docking */
+    justify-content: center !important;
+    z-index: 10000;
+}
+
+/* 5. Hide File/Src Toggle in Laptop Mode */
+body.compact-mode #footerDataToggle {
+    display: none !important;
+}
+
+/* 3. SHOW Left Footer */
+body.compact-mode #footerLeft {
+    display: flex !important;
+}
+
+/* LAPTOP MODE: SMALLER FOOTER HEIGHT */
+body.compact-mode #main-footer {
+    height: 18px !important;
+    /* Reduced from 24px */
+    padding: 0 6px !important;
+    min-height: 0 !important;
+}
+
+/* =========================================
+   RESTORING SETTINGS BUTTON ALIGNMENT
+   ========================================= */
+/* Ensure Settings pushes right again now that Store is gone from header */
+#btnHeaderSettings {
+    margin-left: auto !important;
+}
+
+body.compact-mode #btnHeaderStore {
+    display: none !important;
+}
+
+body.compact-mode .header-sep-vert {
+    display: none !important;
+}
+
+/* Ensure Settings pushes right in compact mode too */
+body.compact-mode #btnHeaderSettings {
+    margin-left: auto !important;
+    height: 24px !important;
+    width: 24px !important;
+}

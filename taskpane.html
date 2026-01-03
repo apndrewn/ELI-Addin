@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Colgate ELI</title>
+
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+    <link rel="stylesheet" href="taskpane.css" type="text/css" />
+    <link rel="stylesheet" href="button-themes.css" type="text/css" />
+    <link rel="stylesheet" href="header-themes.css" type="text/css" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body class="ms-font-m ms-welcome ms-Fabric">
+
+    <div class="app-container">
+
+        <div id="topZone">
+
+            <div class="header">
+                <div class="brand-group">
+                    <div class="brand-icon-box">
+                        <svg id="logoDefault" class="brand-ai-logo" viewBox="0 0 100 100" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="eliBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#ffffff" />
+                                    <stop offset="100%" style="stop-color:#2979ff" />
+                                </linearGradient>
+                            </defs>
+
+                            <g class="ai-network-ring">
+                                <circle cx="50" cy="50" r="46" stroke="white" stroke-width="2" stroke-dasharray="8 12"
+                                    stroke-linecap="round" opacity="0.3" />
+
+                                <circle cx="50" cy="4" r="4" fill="#00e5ff"
+                                    style="filter: drop-shadow(0 0 4px #00e5ff);" />
+                                <circle cx="92" cy="67" r="3" fill="#ffd700"
+                                    style="filter: drop-shadow(0 0 4px #ffd700);" />
+                                <circle cx="8" cy="67" r="3" fill="#e040fb"
+                                    style="filter: drop-shadow(0 0 4px #e040fb);" />
+                            </g>
+
+                            <text x="50" y="63" font-family="Arial, sans-serif" font-weight="900" font-size="36"
+                                fill="url(#eliBlueGrad)" stroke="#ffffff" stroke-width="0.5" text-anchor="middle"
+                                letter-spacing="3" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">ELI</text>
+
+                            <circle cx="50" cy="50" r="50" stroke="#2979ff" stroke-width="1" opacity="0.2"
+                                class="ai-pulse" />
+                        </svg>
+
+                        <!-- Robot Logo (Hidden by Default) -->
+                        <svg id="logoRobot" class="brand-robot-logo hidden" viewBox="0 0 100 100" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#f5f5f5" />
+                                    <stop offset="100%" style="stop-color:#cfd8dc" />
+                                </linearGradient>
+                                <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#2979ff" />
+                                    <stop offset="100%" style="stop-color:#00e5ff" />
+                                </linearGradient>
+                                <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0%" style="stop-color:#ffffff" />
+                                    <stop offset="50%" style="stop-color:#00e5ff" />
+                                    <stop offset="100%" style="stop-color:#2979ff" stop-opacity="0" />
+                                </radialGradient>
+                            </defs>
+
+                            <!-- Body / Torso -->
+                            <path d="M20,60 L25,45 L75,45 L80,60 L75,95 L25,95 Z" fill="url(#bodyGrad)" stroke="#546e7a"
+                                stroke-width="2" />
+
+                            <!-- Chest Plate Detail -->
+                            <path d="M35,60 L65,60 L60,85 L40,85 Z" fill="#eceff1" stroke="#b0bec5" stroke-width="1" />
+
+                            <!-- Power Core (Chest) -->
+                            <circle cx="50" cy="70" r="8" fill="url(#coreGlow)" />
+                            <circle cx="50" cy="70" r="10" stroke="#0288d1" stroke-width="1" stroke-dasharray="2 2"
+                                opacity="0.6" />
+
+                            <!-- Shoulders -->
+                            <circle cx="20" cy="50" r="10" fill="#cfd8dc" stroke="#546e7a" stroke-width="2" />
+                            <circle cx="80" cy="50" r="10" fill="#cfd8dc" stroke="#546e7a" stroke-width="2" />
+
+                            <!-- Neck -->
+                            <rect x="42" y="35" width="16" height="10" fill="#37474f" />
+
+                            <!-- Head -->
+                            <rect x="30" y="5" width="40" height="35" rx="8" fill="url(#bodyGrad)" stroke="#546e7a"
+                                stroke-width="2" />
+
+                            <!-- Visor (Eyes) -->
+                            <rect x="32" y="15" width="36" height="10" rx="4" fill="#263238" />
+                            <rect x="35" y="18" width="30" height="4" rx="2" fill="url(#visorGrad)"
+                                style="filter: drop-shadow(0 0 3px #00e5ff);" />
+
+                            <!-- Mouth/Grill -->
+                            <line x1="40" y1="32" x2="60" y2="32" stroke="#90a4ae" stroke-width="2" />
+
+                            <!-- Antenna -->
+                            <path d="M65,10 L75,0" stroke="#546e7a" stroke-width="2" />
+                            <circle cx="75" cy="0" r="2" fill="#ff1744" />
+                        </svg>
+                    </div>
+                    <div class="brand-titles">
+                        <span class="company-label">COLGATE-PALMOLIVE (<span id="headerMyName">User</span>)</span>
+                        <span class="app-label">ELI <span class="long-title">(Enhanced Legal
+                                Intelligence)</span><sup>AI</sup></span>
+                    </div>
+
+                    <!-- Camera Button Removed -->
+
+                    <!-- Moved App Store Button Removed from Here -->
+
+                    <button id="btnHeaderSettings" class="status-badge" style="margin-bottom: 0px;">
+                        <span class="settings-text" data-key="headerSettings">SETTINGS</span>
+                        <span class="settings-icon">⚙️</span>
+                    </button>
+                </div>
+
+                <div id="settingsMenu" class="hidden">
+                    <div class="settings-header-row"
+                        style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+                        <!-- Left Group: Title | Separator | Store -->
+                        <div style="display:flex; align-items:center;">
+                            <div class="settings-title" style="margin:0;">⚙️ Preferences</div>
+
+                            <!-- Vertical Separator -->
+                            <div style="width:1px; height:16px; background:#b0bec5; margin:0 12px;"></div>
+
+                            <!-- Store Link (Clean Text, No Container) -->
+                            <div id="btnAppStoreHeader"
+                                onclick="document.getElementById('settingsMenu').classList.add('hidden'); showAppStore();"
+                                style="cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s; color:#1565c0;"
+                                onmouseover="this.style.color='#0d47a1'; this.style.transform='scale(1.05)';"
+                                onmouseout="this.style.color='#1565c0'; this.style.transform='scale(1)';">
+                                <span style="font-size:16px;">🧩</span>
+                                <span
+                                    style="font-family:'Inter', sans-serif; font-size:13px; font-weight:700; letter-spacing:0.5px;">STORE</span>
+                            </div>
+                        </div>
+
+                        <!-- Close (Right) -->
+                        <div id="btnCloseSettingsMain" class="settings-close-x" title="Close">✕</div>
+                    </div>
+
+                    <div class="settings-body">
+                        <!-- 1. Global Group (First, Collapsible, Open Default) -->
+                        <div style="border-bottom:1px solid #eee; margin-bottom:5px;">
+                            <div onclick="document.getElementById('setGroupGlobal').classList.toggle('hidden'); this.querySelector('.arrow').innerText = document.getElementById('setGroupGlobal').classList.contains('hidden') ? '▶' : '▼';"
+                                style="padding: 10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="settings-group-label" style="padding:0; margin:0;">Global</span>
+                                <span class="arrow" style="font-size:10px; color:#b0bec5;">▼</span>
+                            </div>
+                            <div id="setGroupGlobal">
+                                <div style="padding: 0 16px 8px 16px;">
+                                    <div style="font-size:11px; color:#888; margin-bottom:4px;" data-key="lblLanguage">
+                                        LANGUAGE
+                                    </div>
+                                    <select id="selLanguage" aria-label="Select Language"
+                                        style="width:100%; padding:6px; font-size:12px; border:1px solid #ced4da; border-radius:4px;">
+                                        <option value="en">English</option>
+                                        <option value="es">Español</option>
+                                        <option value="fr">Français</option>
+                                        <option value="de">Deutsch</option>
+                                        <option value="it">Italiano</option>
+                                        <option value="pt">Português</option>
+                                        <option value="zh">中文</option>
+                                        <option value="ja">日本語</option>
+                                        <option value="ru">Русский</option>
+                                    </select>
+                                </div>
+
+                                <div style="padding: 0 16px 8px 16px;">
+                                    <div style="font-size:11px; color:#888; margin-bottom:4px;">GROUP</div>
+                                    <select id="selUserGroup"
+                                        style="width:100%; padding:6px; font-size:12px; border:1px solid #ced4da; border-radius:4px;">
+                                        <option value="External Innovation">External Innovation</option>
+                                        <option value="Commercial">Commercial</option>
+                                    </select>
+                                </div>
+
+                                <div style="padding: 0 16px 12px 16px;">
+                                    <div
+                                        style="font-size:11px; font-weight:700; color:#555; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">
+                                        AI Model
+                                    </div>
+                                    <select id="selAiModel"
+                                        style="width:100%; padding:6px; font-size:12px; border:1px solid #ced4da; border-radius:4px;">
+                                        <option value="gemini-2.5-flash-preview-09-2025">Gemini 2.5 Flash</option>
+                                        <option value="gemini-2.5-pro-preview-09-2025">Gemini 2.5 Pro</option>
+                                        <option value="gemini-1.5-pro-002">Gemini 1.5 Pro</option>
+                                        <option value="gemini-1.5-flash-002">Gemini 1.5 Flash</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <!-- 2. View & Interface -->
+                        <div style="border-bottom:1px solid #eee; margin-bottom:5px;">
+                            <div onclick="document.getElementById('setGroupView').classList.toggle('hidden'); this.querySelector('.arrow').innerText = document.getElementById('setGroupView').classList.contains('hidden') ? '▶' : '▼';"
+                                style="padding: 10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="settings-group-label" style="padding:0; margin:0;">View &
+                                    Interface</span>
+                                <span class="arrow" style="font-size:10px; color:#b0bec5;">▶</span>
+                            </div>
+                            <div id="setGroupView" class="hidden">
+                                <label class="settings-item-row">
+                                    <span>📌 Pin Toolbar</span>
+                                    <input type="checkbox" id="chkPinToolbar">
+                                </label>
+
+                                <label class="settings-item-row">
+                                    <div style="display:flex; align-items:center;">
+                                        <span style="font-size:16px; margin-right:6px;">💻</span>
+                                        <span data-key="lblLaptop">Laptop Mode</span>
+                                    </div>
+                                    <input type="checkbox" id="chkLaptopMode">
+                                </label>
+
+                                <label class="settings-item-row" style="cursor:pointer;"
+                                    onclick="window.toggleButtonTheme()">
+                                    <div style="display:flex; align-items:center;">
+                                        <span style="font-size:16px; margin-right:6px;">🎨</span>
+                                        <span>Button Theme</span>
+                                    </div>
+                                    <span id="lblBtnTheme"
+                                        style="font-weight:700; color:#1565c0; font-size:10px; background:#e3f2fd; padding:2px 6px; border-radius:4px;">Default</span>
+                                </label>
+
+                                <label class="settings-item-row" style="cursor:pointer;"
+                                    onclick="window.toggleHeaderTheme()">
+                                    <div style="display:flex; align-items:center;">
+                                        <span style="font-size:16px; margin-right:6px;">🖼️</span>
+                                        <span>Header Theme</span>
+                                    </div>
+                                    <span id="lblHeaderTheme"
+                                        style="font-weight:700; color:#1565c0; font-size:10px; background:#e3f2fd; padding:2px 6px; border-radius:4px;">Default</span>
+                                </label>
+
+                                <div class="settings-action-btn" id="btnCustomizeToolbar">
+                                    <span style="font-size:16px;">🛠️</span>
+                                    <span data-key="lblCustomize">Customize Toolbar</span>
+                                </div>
+                                <div style="font-size:10px; color:#c62828; padding:6px 16px; cursor:pointer; text-align:right;"
+                                    onclick="window.resetViewSettings()">
+                                    ↺ Reset View
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Data Integration -->
+                        <div style="border-top:1px solid #eee; margin-top:10px; padding-top:2px;">
+                            <div onclick="document.getElementById('setGroupDataInt').classList.toggle('hidden'); this.querySelector('.arrow').innerText = document.getElementById('setGroupDataInt').classList.contains('hidden') ? '▶' : '▼';"
+                                style="padding: 10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="settings-group-label" style="padding:0; margin:0;">Data
+                                    Integration</span>
+                                <span class="arrow" style="font-size:10px; color:#b0bec5;">▶</span>
+                            </div>
+                            <div id="setGroupDataInt" class="hidden" style="padding: 0 16px 8px 16px;">
+                                <label style="font-size:11px; display:block; margin-bottom:4px; color:#555;">Default
+                                    Source</label>
+                                <select id="selDefaultDataSource"
+                                    style="width:100%; padding:6px; font-size:11px; margin-bottom:10px; border:1px solid #ced4da; border-radius:4px;">
+                                    <option value="local">Local File</option>
+                                    <option value="onit">Onit (Data Source)</option>
+                                </select>
+
+                                <label style="font-size:11px; display:block; margin-bottom:4px; color:#555;">Data
+                                    Source
+                                    ID</label>
+                                <input type="text" id="txtDataSourceId" value="Onit" placeholder="e.g. Onit"
+                                    style="width:100%; padding:6px; font-size:11px; border:1px solid #ced4da; border-radius:4px;">
+                            </div>
+                        </div>
+
+                        <!-- 4. Configuration -->
+                        <div style="border-top:1px solid #eee; margin-top:10px; margin-bottom:5px;">
+                            <div onclick="document.getElementById('setGroupGlobalConfig').classList.toggle('hidden'); this.querySelector('.arrow').innerText = document.getElementById('setGroupGlobalConfig').classList.contains('hidden') ? '▶' : '▼';"
+                                style="padding: 10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="settings-group-label" style="padding:0; margin:0;">Configuration</span>
+                                <span class="arrow" style="font-size:10px; color:#b0bec5;">▶</span>
+                            </div>
+                            <div id="setGroupGlobalConfig" class="hidden">
+                                <div class="settings-action-btn" id="btnImportRequesters">
+                                    <span>👥</span> <span>Import Requesters (JSON)</span>
+                                </div>
+                                <input type="file" id="fileImportRequesters" accept=".json" style="display:none;">
+
+                                <div class="settings-action-btn" id="btnImportTemplates">
+                                    <span>📚</span> <span>Import Templates (JSON)</span>
+                                </div>
+                                <input type="file" id="fileImportTemplates" accept=".json" style="display:none;">
+
+                            </div>
+                        </div>
+
+                        <!-- 5. Review & Logs -->
+                        <div style="border-top:1px solid #eee; margin-top:10px; padding-top:2px;">
+                            <div onclick="document.getElementById('setGroupReview').classList.toggle('hidden'); this.querySelector('.arrow').innerText = document.getElementById('setGroupReview').classList.contains('hidden') ? '▶' : '▼';"
+                                style="padding: 10px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="settings-group-label" style="padding:0; margin:0;">Review & Logs</span>
+                                <span class="arrow" style="font-size:10px; color:#b0bec5;">▶</span>
+                            </div>
+                            <div id="setGroupReview" class="hidden">
+                                <label class="settings-item-row">
+                                    <span data-key="lblAudit">📝 Audit Trail</span>
+                                    <input type="checkbox" id="chkAuditTrail">
+                                </label>
+                                <label class="settings-item-row">
+                                    <span>📸 Auto-Snapshot on Load</span>
+                                    <input type="checkbox" id="chkAutoSnap">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-action-btn danger" id="btnGlobalReset">
+                            <span>⚠️</span> <span>Reset All</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group" id="mainToolbar"></div>
+
+        </div>
+
+        <div id="loading" class="hidden">
+            <div class="progress-track">
+                <div class="progress-bar"></div>
+            </div>
+            <p>Analyzing document...</p>
+            <button id="btnCancelLoad">Cancel</button>
+        </div>
+
+        <div id="output" class="output-area hidden"></div>
+    </div>
+    <script type="text/javascript" src="taskpane.js"></script>
+
+</body>
+
+</html>
