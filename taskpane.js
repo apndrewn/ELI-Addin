@@ -1995,18 +1995,6 @@ ${langRule}
 
 // 1. Initialize when Office and DOM are ready
 // 1. Initialize when Office and DOM are ready
-Office.onReady(function (info) {
-  // --- RESIZE LOGIC ---
-  try {
-    Office.extensionLifeCycle.taskpane.setWidth(750);
-  } catch (e) {
-    console.log("Resize not supported.");
-  }
-  
-  // FORCE START: No waiting for DOM events that might have already passed
-  console.log("⚡ Office Ready - Forcing Init");
-  init();
-});
 // --- TOOLBAR STATE ---
 var toolbarPage = 1;
 // DEFINITION: All available tools (Updated with Descriptions)
@@ -21025,3 +21013,16 @@ function checkStorageUsage() {
   btnBack.onclick = function () { showHome(); }; // Changed action
   out.appendChild(btnBack);
 }
+Office.onReady(function (info) {
+  // --- RESIZE LOGIC ---
+  try {
+    Office.extensionLifeCycle.taskpane.setWidth(750);
+  } catch (e) {
+    console.log("Resize not supported.");
+  }
+  
+  // FORCE START: No waiting for DOM events that might have already passed
+  console.log("⚡ Office Ready - Forcing Init");
+  init();
+});
+      
