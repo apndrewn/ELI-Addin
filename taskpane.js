@@ -1,9 +1,13 @@
-﻿// --- COLGATE EI ASSISTANT ---
+// --- COLGATE EI ASSISTANT ---
 
 // !!! IMPORTANT: PASTE YOUR API KEY BELOW !!!
 // ✅ SECURE BACKEND CONNECTION
 // Points to your Vercel deployment
 const BACKEND_URL = "https://eli-backend.vercel.app/api/generate";
+const API_KEY = "SECURE_PROXY_MODE";
+
+console.log = function () {};
+console.warn = function () {};
 
 // --- SESSION MANAGEMENT (Per Instance) ---
 // This ID stays the same only while the taskpane remains open.
@@ -20,7 +24,10 @@ const PROMPTS = {
   // --- VERSION HISTORY DATABASE LOGIC ---
   getVersionHistory: function (docId) {
     return new Promise((resolve, reject) => {
-      if (!PROMPTS._dbInstance) { PROMPTS.initDocDB().then(() => PROMPTS.getVersionHistory(docId).then(resolve)); return; }
+      if (!PROMPTS._dbInstance) {
+        PROMPTS.initDocDB().then(() => PROMPTS.getVersionHistory(docId).then(resolve));
+        return;
+      }
 
       const txn = PROMPTS._dbInstance.transaction([PROMPTS._DOC_STORE_NAME], "readonly");
       const store = txn.objectStore(PROMPTS._DOC_STORE_NAME);
@@ -149,7 +156,7 @@ const PROMPTS = {
           data: arrayBuffer,
           name: fileObj.name,
           type: fileObj.type,
-          lastModified: Date.now()
+          lastModified: Date.now(),
         });
 
         putRequest.onsuccess = () => {
@@ -211,18 +218,16 @@ const PROMPTS = {
         } else {
           throw new Error("Mammoth library missing");
         }
-      }
-      else if (fileObj.name.toLowerCase().endsWith(".pdf")) {
+      } else if (fileObj.name.toLowerCase().endsWith(".pdf")) {
         // PDF -> Multimodal (Base64)
         // We rely on AGREEMENT_DATA being populated by the file loader immediately before this call
-        if (typeof AGREEMENT_DATA !== 'undefined' && AGREEMENT_DATA.isBase64 && AGREEMENT_DATA.data) {
+        if (typeof AGREEMENT_DATA !== "undefined" && AGREEMENT_DATA.isBase64 && AGREEMENT_DATA.data) {
           // We don't extract text manually; we send the PDF payload
           contextContent = "[PDF BINARY DATA ATTACHED]";
         } else {
           throw new Error("PDF Data not loaded yet");
         }
-      }
-      else {
+      } else {
         // Text/JSON -> Raw Read
         const arrayBuffer = await fileObj.arrayBuffer();
         var dec = new TextDecoder("utf-8");
@@ -240,10 +245,7 @@ const PROMPTS = {
 
       // Prepare Gemini Payload
       if (fileObj.name.toLowerCase().endsWith(".pdf")) {
-        parts = [
-          { text: prompt },
-          { inlineData: { mimeType: "application/pdf", data: AGREEMENT_DATA.data } }
-        ];
+        parts = [{ text: prompt }, { inlineData: { mimeType: "application/pdf", data: AGREEMENT_DATA.data } }];
       } else {
         // Text/DOCX Payload
         parts = [{ text: prompt + "\n\n--- DOCUMENT ---\n" + contextContent }];
@@ -261,7 +263,7 @@ const PROMPTS = {
           var json = tryParseGeminiJSON(resultText);
 
           if (Array.isArray(json) && json.length > 0) {
-            var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+            var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
             await PROMPTS.saveAICacheToDB(uniqueKey, json);
             console.log("Background AI Cache Saved:", json.length + " rows");
 
@@ -273,7 +275,7 @@ const PROMPTS = {
                 var sp = btn.querySelector("span");
                 if (sp) sp.innerText = "⚡";
               }
-            } catch (e) { }
+            } catch (e) {}
 
             //showToast("⚡ AI Analysis Ready!");
             setStatus("⚡");
@@ -283,7 +285,6 @@ const PROMPTS = {
             setStatus("⚠️"); // Warning: No Data
             success = true; // Stop retrying on bad data (it's not an API error)
           }
-
         } catch (e) {
           if (e.message && (e.message.includes("cancelled") || e.message.includes("shorter"))) {
             // Cancelled = Stop Retrying immediately (assumes superseded)
@@ -293,14 +294,13 @@ const PROMPTS = {
 
           if (attempts < maxAttempts) {
             // Silent Wait 5s
-            await new Promise(r => setTimeout(r, 5000));
+            await new Promise((r) => setTimeout(r, 5000));
           } else {
             console.error("Background Analysis Final Fail", e);
             // Silent Fail (No Toast/Icon) per user request
           }
         }
       }
-
     } catch (e) {
       console.error("Pre-Scan Error", e);
     }
@@ -314,7 +314,9 @@ const PROMPTS = {
         var store = txn.objectStore("docs");
         store.delete(id);
         resolve();
-      } catch (e) { resolve(); }
+      } catch (e) {
+        resolve();
+      }
     });
   },
 
@@ -322,9 +324,11 @@ const PROMPTS = {
     return new Promise((resolve, reject) => {
       if (!PROMPTS._dbInstance) {
         // Try init first
-        PROMPTS.initDocDB().then(() => {
-          PROMPTS.loadDocFromDB(id).then(resolve).catch(reject);
-        }).catch(evt => resolve(null)); // Resolve null on init fail
+        PROMPTS.initDocDB()
+          .then(() => {
+            PROMPTS.loadDocFromDB(id).then(resolve).catch(reject);
+          })
+          .catch((evt) => resolve(null)); // Resolve null on init fail
         return;
       }
 
@@ -475,9 +479,7 @@ Review this agreement and identify 3-10 specific legal issues/risks.\n` +
   // [Search for "SUMMARY: (audience, text) =>" around line 79 in script final 3b.txt]
   SUMMARY: (audience, text, optionalKeys) => {
     // 1. Check if the user specifically asked for Finance/Commercial terms
-    var isFinance =
-      audience.toLowerCase().includes("finance") ||
-      audience.toLowerCase().includes("commercial");
+    var isFinance = audience.toLowerCase().includes("finance") || audience.toLowerCase().includes("commercial");
     const langRule = PROMPTS._getLangInstruction();
 
     // 2. Define the extraction keys
@@ -815,14 +817,17 @@ var TOOL_DEFINITIONS = [
 
       // 1. Force a new snapshot labeled "(EMAILED)"
       // 4th arg 'true' ensures we DO NOT overwrite the "Original Version"
-      createSnapshot("CP Version -- (EMAILED)", null, function () {
-
-        // 2. Proceed to the Email Tool
-        requireUserName(function () {
-          runAiEmailScanner();
-        });
-
-      }, true); // <--- TRUE = Force New Entry
+      createSnapshot(
+        "CP Version -- (EMAILED)",
+        null,
+        function () {
+          // 2. Proceed to the Email Tool
+          requireUserName(function () {
+            runAiEmailScanner();
+          });
+        },
+        true,
+      ); // <--- TRUE = Force New Entry
     },
     // RESTORED: Mini Settings Icon
     configAction: function () {
@@ -844,11 +849,9 @@ var TOOL_DEFINITIONS = [
   },
 ];
 
-
 //console.log("📅 Session ID (Daily):", CURRENT_SESSION_ID);
-// We keep this variable defined as a placeholder so we don't have to delete it 
+// We keep this variable defined as a placeholder so we don't have to delete it
 // from every function call below. It is no longer used for authentication.
-const API_KEY = "SECURE_PROXY_MODE";
 // 🧠 ELI KNOWLEDGE BASE (EDIT THIS TO TEACH THE BOT)
 
 const CLAUSE_DB_NAME = "ELI_ClauseDB";
@@ -879,7 +882,7 @@ function initClauseDB() {
 
 // ASYNC: Save entire library
 function saveLibraryToDB(libraryArray) {
-  return initClauseDB().then(db => {
+  return initClauseDB().then((db) => {
     return new Promise((resolve, reject) => {
       var tx = db.transaction([CLAUSE_STORE], "readwrite");
       var store = tx.objectStore(CLAUSE_STORE);
@@ -888,7 +891,7 @@ function saveLibraryToDB(libraryArray) {
       store.clear();
 
       // 2. Add all items
-      libraryArray.forEach(item => store.put(item));
+      libraryArray.forEach((item) => store.put(item));
 
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -898,7 +901,7 @@ function saveLibraryToDB(libraryArray) {
 
 // ASYNC: Load entire library
 function loadLibraryFromDB() {
-  return initClauseDB().then(db => {
+  return initClauseDB().then((db) => {
     return new Promise((resolve, reject) => {
       var tx = db.transaction([CLAUSE_STORE], "readonly");
       var store = tx.objectStore(CLAUSE_STORE);
@@ -930,13 +933,17 @@ function initFeatureDB() {
       if (!db.objectStoreNames.contains(STORE_REQUESTERS)) db.createObjectStore(STORE_REQUESTERS, { keyPath: "id" });
     };
 
-    req.onsuccess = function (e) { resolve(e.target.result); };
-    req.onerror = function (e) { reject("Feature DB Error"); };
+    req.onsuccess = function (e) {
+      resolve(e.target.result);
+    };
+    req.onerror = function (e) {
+      reject("Feature DB Error");
+    };
   });
 }
 
 function loadFeatureData(storeName) {
-  return initFeatureDB().then(db => {
+  return initFeatureDB().then((db) => {
     return new Promise((resolve) => {
       var tx = db.transaction([storeName], "readonly");
       var req = tx.objectStore(storeName).getAll();
@@ -947,12 +954,12 @@ function loadFeatureData(storeName) {
 }
 
 function saveFeatureData(storeName, data) {
-  return initFeatureDB().then(db => {
+  return initFeatureDB().then((db) => {
     return new Promise((resolve) => {
       var tx = db.transaction([storeName], "readwrite");
       var store = tx.objectStore(storeName);
       store.clear(); // Overwrite logic
-      data.forEach(item => {
+      data.forEach((item) => {
         if (!item.id) item.id = "id_" + Date.now() + "_" + Math.random();
         store.put(item);
       });
@@ -972,7 +979,9 @@ function migrateRequestersToDB() {
           localStorage.removeItem("colgate_saved_requesters"); // Cleanup
         });
       }
-    } catch (e) { console.error("Migration Error", e); }
+    } catch (e) {
+      console.error("Migration Error", e);
+    }
   }
 }
 
@@ -981,37 +990,30 @@ const ELI_KNOWLEDGE_BASE = {
     "ELI (Enhanced Legal Intelligence) is an AI-powered Word Add-in designed to help Colgate legal teams review, draft, and negotiate contracts faster and safer.",
 
   ERROR_CHECK: {
-    "What it does":
-      "Scans for typos, grammar errors, and defined term inconsistencies.",
+    "What it does": "Scans for typos, grammar errors, and defined term inconsistencies.",
     "Advanced Features":
       "Can check for broken cross-references (e.g., 'Error! Source not found') and mismatched Footer References (CP Ref #).",
-    Settings:
-      "Supports US vs UK dialect enforcement and 'Strict Mode' for passive voice detection.",
+    Settings: "Supports US vs UK dialect enforcement and 'Strict Mode' for passive voice detection.",
   },
 
   LEGAL_ASSIST: {
     "What it does":
       "Identifies legal risks in the document (Indemnity, Liability, Termination) and rates them High/Medium/Low.",
-    Training:
-      "You can click 'Ignore' on specific risks to train ELI to stop flagging them for your session.",
+    Training: "You can click 'Ignore' on specific risks to train ELI to stop flagging them for your session.",
   },
 
   PLAYBOOK: {
-    "What it does":
-      "Compares the document against Colgate's playbook and provides fallbacks. (NDA, Services, JDA).",
+    "What it does": "Compares the document against Colgate's playbook and provides fallbacks. (NDA, Services, JDA).",
     "Approval Workflow":
       "If a mandatory clause is missing or changed, ELI flags it. You can request approval via email directly from the tool. Once approved, the clause is unlocked.",
-    Fallbacks:
-      "Offers pre-approved 'Fallback' clauses if the counterparty rejects the standard terms.",
+    Fallbacks: "Offers pre-approved 'Fallback' clauses if the counterparty rejects the standard terms.",
   },
 
   SUMMARY: {
-    "What it does":
-      "Extracts key deal points (Parties, Term, Liability Cap, Payment Terms) into a clean grid.",
+    "What it does": "Extracts key deal points (Parties, Term, Liability Cap, Payment Terms) into a clean grid.",
     "Audience Modes":
       "You can tailor the summary for 'Legal Counsel' (detailed), 'Business Stakeholders' (simple), or 'Finance' (money-focused).",
-    Export:
-      "Can export the summary to CSV or draft a cover email automatically.",
+    Export: "Can export the summary to CSV or draft a cover email automatically.",
   },
 
   ASK_ELI_CHAT: {
@@ -1022,15 +1024,12 @@ const ELI_KNOWLEDGE_BASE = {
       "Translate: Translates selection while keeping formatting.",
       "Draft: Creates new clauses from scratch.",
     ],
-    "Scope Toggle":
-      "Switch between 'Strict' (Document facts only) and 'Broad' (General legal knowledge) modes.",
+    "Scope Toggle": "Switch between 'Strict' (Document facts only) and 'Broad' (General legal knowledge) modes.",
   },
 
   COMPARE: {
-    "What it does":
-      "Smart comparison between the open document and another file (DOCX/PDF/TXT).",
-    Modes:
-      "Can compare 'Old vs New' (Redlines) or 'Template vs Draft' (Spotting deviations from standard forms).",
+    "What it does": "Smart comparison between the open document and another file (DOCX/PDF/TXT).",
+    Modes: "Can compare 'Old vs New' (Redlines) or 'Template vs Draft' (Spotting deviations from standard forms).",
   },
 
   AUTO_FILL: {
@@ -1043,42 +1042,54 @@ const ELI_KNOWLEDGE_BASE = {
   EMAIL_TOOL: {
     "What it does":
       "Scans the document to identify the Third Party, Agreement Type, and Contact Info, then drafts a ready-to-send Outlook/Gmail email.",
-    Templates:
-      "Includes templates for sending to the Counterparty (External) or the Internal Requestor.",
+    Templates: "Includes templates for sending to the Counterparty (External) or the Internal Requestor.",
   },
 
   SETTINGS: {
     "Laptop Mode": "Pins the toolbar and shrinks icons for small screens.",
-    "Audit Trail":
-      "Logs every AI change (Draft, Fix, Rewrite) at the bottom of the document for compliance.",
-    Language:
-      "Switches the entire UI into Spanish, French, German, Chinese, etc.",
+    "Audit Trail": "Logs every AI change (Draft, Fix, Rewrite) at the bottom of the document for compliance.",
+    Language: "Switches the entire UI into Spanish, French, German, Chinese, etc.",
   },
 };
 
 // --- DOCUMENT CLEANER CONFIGURATION ---
 const CLEANER_RULES = {
-  "Expenses": {
+  Expenses: {
     title: "💰 Expenses Clause",
     options: [
-      { label: "Colgate Standard Clause ($500)", text: "Colgate will reimubrse Company as per Colgate's travel and expense policy after receipt of invoice." },
-      { label: "No Reimbursement", text: "Supplier shall be responsible for all expenses incurred in the performance of this Agreement.", desc: "Supplier pays all their own expenses." }
-    ]
+      {
+        label: "Colgate Standard Clause ($500)",
+        text: "Colgate will reimubrse Company as per Colgate's travel and expense policy after receipt of invoice.",
+      },
+      {
+        label: "No Reimbursement",
+        text: "Supplier shall be responsible for all expenses incurred in the performance of this Agreement.",
+        desc: "Supplier pays all their own expenses.",
+      },
+    ],
   },
   // Example of scalability:
   "Governing Law": {
     title: "⚖️ Governing Law",
     options: [
-      { label: "New York", text: "This Agreement shall be governed by the laws of the State of New York.", desc: "Standard US preference." },
-      { label: "Delaware", text: "This Agreement shall be governed by the laws of the State of Delaware.", desc: "Corporate standard." }
-    ]
-  }
+      {
+        label: "New York",
+        text: "This Agreement shall be governed by the laws of the State of New York.",
+        desc: "Standard US preference.",
+      },
+      {
+        label: "Delaware",
+        text: "This Agreement shall be governed by the laws of the State of Delaware.",
+        desc: "Corporate standard.",
+      },
+    ],
+  },
 };
 // --- CONSTANTS: DEFAULT WORKFLOWS (Single Source of Truth) ---
 const DEFAULT_WORKFLOW_MAPS = {
   default: ["error", "legal", "summary", "chat", "playbook", "compare", "template", "email"],
   draft: ["template", "error", "chat", "email"],
-  review: ["playbook", "compare", "legal", "chat", "email", "error"]
+  review: ["playbook", "compare", "legal", "chat", "email", "error"],
 };
 // 🏪 ELI APP STORE CATALOG (CORE TOOLS + NEW APPS)
 // 🏪 ELI APP STORE CATALOG (CATEGORIZED)
@@ -1091,7 +1102,9 @@ const ELI_APP_STORE_CATALOG = [
     icon: "🧼",
     desc: "Format Cleaner: Whitens fonts, flosses spacing, and removes metadata plaque.",
     category: "Featured Extensions",
-    action: function () { showDocuScrubUI(); }
+    action: function () {
+      showDocuScrubUI();
+    },
   },
   {
     id: "app_term_matrix",
@@ -1100,7 +1113,9 @@ const ELI_APP_STORE_CATALOG = [
     icon: "🔠",
     desc: "Definition Scanner: Creates a live index of defined terms & flags undefined 'ghost' terms.",
     category: "Featured Extensions",
-    action: function () { runTermMatrix(); } // <--- CHANGED
+    action: function () {
+      runTermMatrix();
+    }, // <--- CHANGED
   },
   {
     id: "app_timeline",
@@ -1109,7 +1124,9 @@ const ELI_APP_STORE_CATALOG = [
     icon: "🗓️",
     desc: "Visualizes critical dates (Effective, Expiry, Renewal) in a chronological timeline.",
     category: "Featured Extensions",
-    action: function () { runTimelineAnalysis(); }
+    action: function () {
+      runTimelineAnalysis();
+    },
   },
   {
     id: "app_clause_lib",
@@ -1121,65 +1138,111 @@ const ELI_APP_STORE_CATALOG = [
     action: function () {
       // This calls the module we defined above
       showClauseLibraryInterface();
-    }
+    },
   },
 
   // --- CORE TOOLS (Restorable) ---
   {
-    id: "btnError", key: "error", label: "Error Check", icon: "📝",
+    id: "btnError",
+    key: "error",
+    label: "Error Check",
+    icon: "📝",
     desc: "Scans for typos, grammar mistakes, and broken refs.",
     category: "Core System Tools", // <--- NEW
-    action: null
+    action: null,
   },
   {
-    id: "btnAssist", key: "legal", label: "Legal Issues", icon: "⚖️",
+    id: "btnAssist",
+    key: "legal",
+    label: "Legal Issues",
+    icon: "⚖️",
     desc: "AI analysis of high-risk clauses.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnSummary", key: "summary", label: "Summary", icon: "📋",
+    id: "btnSummary",
+    key: "summary",
+    label: "Summary",
+    icon: "📋",
     desc: "Extracts key deal points into a grid.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnQA", key: "chat", label: "Ask ELI", icon: "💬",
+    id: "btnQA",
+    key: "chat",
+    label: "Ask ELI",
+    icon: "💬",
     desc: "Chat assistant. Rewrite, Defend, Translate.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnPlaybook", key: "playbook", label: "Playbook", icon: "📖",
+    id: "btnPlaybook",
+    key: "playbook",
+    label: "Playbook",
+    icon: "📖",
     desc: "Compares document against Colgate standards.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnCompare", key: "compare", label: "Compare", icon: "↔️",
+    id: "btnCompare",
+    key: "compare",
+    label: "Compare",
+    icon: "↔️",
     desc: "Redline analysis against other files.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnTemplate", key: "template", label: "Build Draft", icon: "⚡",
+    id: "btnTemplate",
+    key: "template",
+    label: "Build Draft",
+    icon: "⚡",
     desc: "Builds a draft from templates.",
     category: "Core System Tools",
-    action: null
+    action: null,
   },
   {
-    id: "btnEmailTool", key: "email", label: "Email Tool", icon: "✉️",
+    id: "btnEmailTool",
+    key: "email",
+    label: "Email Tool",
+    icon: "✉️",
     desc: "Drafts Outlook-ready cover emails.",
     category: "Core System Tools",
-    action: null
-  }
+    action: null,
+  },
 ];
 // Paste your key above
 // ==========================================
 // START: GLOBAL THEME LOGIC
 // ==========================================
-var BTN_THEMES = ["Default", "Midnight", "Flat", "Pastel", "Platinum", "Royal", "Glass", "Emerald", "Outline", "Executive"];
-var BTN_THEME_CLASSES = ["", "theme-midnight", "theme-flat", "theme-pastel", "theme-platinum", "theme-vantage", "theme-glass", "theme-material", "theme-outline", "theme-chrome"];
+var BTN_THEMES = [
+  "Default",
+  "Midnight",
+  "Flat",
+  "Pastel",
+  "Platinum",
+  "Royal",
+  "Glass",
+  "Emerald",
+  "Outline",
+  "Executive",
+];
+var BTN_THEME_CLASSES = [
+  "",
+  "theme-midnight",
+  "theme-flat",
+  "theme-pastel",
+  "theme-platinum",
+  "theme-vantage",
+  "theme-glass",
+  "theme-material",
+  "theme-outline",
+  "theme-chrome",
+];
 
 window.toggleButtonTheme = function () {
   if (!userSettings.buttonThemeIndex) userSettings.buttonThemeIndex = 0;
@@ -1192,8 +1255,30 @@ window.toggleButtonTheme = function () {
 // ==========================================
 // START: HEADER THEME LOGIC
 // ==========================================
-var HEADER_THEMES = ["Default", "Classic White", "Robot AI", "Executive", "Midnight", "Oceanic", "Emerald", "Royal", "Copper", "Minimalist"];
-var HEADER_THEME_CLASSES = ["", "theme-classic-white", "theme-robot", "theme-executive", "theme-midnight", "theme-oceanic", "theme-emerald", "theme-royal", "theme-copper", "theme-minimalist"];
+var HEADER_THEMES = [
+  "Default",
+  "Classic White",
+  "Robot AI",
+  "Executive",
+  "Midnight",
+  "Oceanic",
+  "Emerald",
+  "Royal",
+  "Copper",
+  "Minimalist",
+];
+var HEADER_THEME_CLASSES = [
+  "",
+  "theme-classic-white",
+  "theme-robot",
+  "theme-executive",
+  "theme-midnight",
+  "theme-oceanic",
+  "theme-emerald",
+  "theme-royal",
+  "theme-copper",
+  "theme-minimalist",
+];
 
 window.toggleHeaderTheme = function () {
   if (!userSettings.headerThemeIndex) userSettings.headerThemeIndex = 0;
@@ -1216,8 +1301,15 @@ window.applyHeaderTheme = function () {
   var header = document.querySelector(".header");
   if (header) {
     header.classList.remove(
-      "theme-classic-white", "theme-robot", "theme-executive", "theme-midnight",
-      "theme-oceanic", "theme-emerald", "theme-royal", "theme-copper", "theme-minimalist"
+      "theme-classic-white",
+      "theme-robot",
+      "theme-executive",
+      "theme-midnight",
+      "theme-oceanic",
+      "theme-emerald",
+      "theme-royal",
+      "theme-copper",
+      "theme-minimalist",
     );
     if (cls) header.classList.add(cls);
   }
@@ -1287,8 +1379,16 @@ window.applyButtonTheme = function () {
   buttons.forEach(function (btn) {
     // Remove ALL possible theme classes first
     btn.classList.remove(
-      "theme-midnight", "theme-flat", "theme-pastel", "theme-neon", "theme-platinum",
-      "theme-vantage", "theme-glass", "theme-material", "theme-outline", "theme-chrome"
+      "theme-midnight",
+      "theme-flat",
+      "theme-pastel",
+      "theme-neon",
+      "theme-platinum",
+      "theme-vantage",
+      "theme-glass",
+      "theme-material",
+      "theme-outline",
+      "theme-chrome",
     );
 
     // Add the active class (if not default)
@@ -1304,18 +1404,24 @@ window.applyButtonTheme = function () {
 var eliClauseLibrary = [];
 // GLOBAL SETTINGS OBJECT
 var userSettings = {
-  workflowMaps: null,  // Stores your custom playlists (Draft, Review, Default)
-  toolOrder: null,     // Stores the currently active button order
+  workflowMaps: null, // Stores your custom playlists (Draft, Review, Default)
+  toolOrder: null, // Stores the currently active button order
   // Error Check Settings
   strictMode: false,
   currentWorkflow: "default",
   installedStoreApps: [],
   disableTrackChanges: false,
-  matchThreshold: 0.50, // <--- Add this
+  matchThreshold: 0.5, // <--- Add this
   extractionTerms: [
-    "Indemnity", "Liability", "Termination", "Confidentiality",
-    "Governing Law", "Warranty", "Force Majeure", "IP Rights"
-  ],  // <--- Add this
+    "Indemnity",
+    "Liability",
+    "Termination",
+    "Confidentiality",
+    "Governing Law",
+    "Warranty",
+    "Force Majeure",
+    "IP Rights",
+  ], // <--- Add this
   hideMatches: false,
   dialect: "US",
   checkStyle: "Standard",
@@ -1376,7 +1482,6 @@ var userSettings = {
   },
 };
 
-
 // --- NEW DATA STORES ---
 var approvalQueue = [];
 var loadedPlaybook = [];
@@ -1395,7 +1500,7 @@ function saveCurrentSettings(silent) {
     localStorage.setItem("colgate_user_settings", JSON.stringify(userSettings));
     console.log("💾 Settings Saved:", userSettings);
     // Only show toast if 'silent' is false or undefined
-    if (!silent && typeof showToast === 'function') showToast("✅ Settings Saved");
+    if (!silent && typeof showToast === "function") showToast("✅ Settings Saved");
   } catch (e) {
     console.error("❌ Save Failed (LocalStorage blocked?):", e);
   }
@@ -1462,8 +1567,7 @@ const dictionary = {
     msgWarnTitle: "Partial Selection Active",
     msgWarnDesc:
       "You are analyzing <strong>only</strong> the highlighted text.<br>(Click anywhere else to reset to Full Document)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Ask a question or click a tool below to start.",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Ask a question or click a tool below to start.",
   },
   es: {
     headerSettings: "CONFIGURACIÓN",
@@ -1485,8 +1589,7 @@ const dictionary = {
     msgWarnTitle: "Selección Parcial Activa",
     msgWarnDesc:
       "Está analizando <strong>solo</strong> el texto resaltado.<br>(Haga clic en otro lugar para restablecer)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Haga una pregunta o elija una herramienta para comenzar.",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Haga una pregunta o elija una herramienta para comenzar.",
   },
   fr: {
     headerSettings: "PARAMÈTRES",
@@ -1508,8 +1611,7 @@ const dictionary = {
     msgWarnTitle: "Sélection Partielle Active",
     msgWarnDesc:
       "Vous analysez <strong>uniquement</strong> le texte surligné.<br>(Cliquez ailleurs pour tout réinitialiser)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Posez une question ou cliquez sur un outil pour commencer.",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Posez une question ou cliquez sur un outil pour commencer.",
   },
   de: {
     headerSettings: "EINSTELLUNGEN",
@@ -1531,8 +1633,7 @@ const dictionary = {
     msgWarnTitle: "Teilauswahl Aktiv",
     msgWarnDesc:
       "Sie analysieren <strong>nur</strong> den markierten Text.<br>(Klicken Sie woanders, um zurückzusetzen)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Stellen Sie eine Frage oder wählen Sie ein Tool aus.",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Stellen Sie eine Frage oder wählen Sie ein Tool aus.",
   },
   it: {
     headerSettings: "IMPOSTAZIONI",
@@ -1552,10 +1653,8 @@ const dictionary = {
     lblCustomize: "🎨 Personalizza barra",
     lblAudit: "<strong>Audit Trail</strong> (Registro)",
     msgWarnTitle: "Selezione Parziale Attiva",
-    msgWarnDesc:
-      "Stai analizzando <strong>solo</strong> il testo evidenziato.<br>(Clicca altrove per ripristinare)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Fai una domanda o clicca su uno strumento per iniziare.",
+    msgWarnDesc: "Stai analizzando <strong>solo</strong> il testo evidenziato.<br>(Clicca altrove per ripristinare)",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Fai una domanda o clicca su uno strumento per iniziare.",
   },
   pt: {
     headerSettings: "CONFIGURAÇÕES",
@@ -1577,8 +1676,7 @@ const dictionary = {
     msgWarnTitle: "Seleção Parcial Ativa",
     msgWarnDesc:
       "Você está analisando <strong>apenas</strong> o texto destacado.<br>(Clique em outro lugar para redefinir)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Faça uma pergunta ou clique em uma ferramenta para começar.",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Faça uma pergunta ou clique em uma ferramenta para começar.",
   },
   zh: {
     headerSettings: "设置",
@@ -1598,8 +1696,7 @@ const dictionary = {
     lblCustomize: "自定义工具栏",
     lblAudit: "<strong>审计跟踪</strong> (日志)",
     msgWarnTitle: "部分选择处于活动状态",
-    msgWarnDesc:
-      "您正在分析<strong>仅</strong>突出显示的文本。<br>（单击其他任何位置以重置）",
+    msgWarnDesc: "您正在分析<strong>仅</strong>突出显示的文本。<br>（单击其他任何位置以重置）",
     msgChatWelcome: "<strong>👋 ELI</strong>: 请提问或点击下方工具开始。",
   },
   ja: {
@@ -1622,8 +1719,7 @@ const dictionary = {
     msgWarnTitle: "部分選択アクティブ",
     msgWarnDesc:
       "ハイライトされたテキスト<strong>のみ</strong>を分析しています。<br>（リセットするには他の場所をクリック）",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: 質問するか、下のツールをクリックして開始します。",
+    msgChatWelcome: "<strong>👋 ELI</strong>: 質問するか、下のツールをクリックして開始します。",
   },
   ru: {
     headerSettings: "НАСТРОЙКИ",
@@ -1643,10 +1739,8 @@ const dictionary = {
     lblCustomize: "🎨 Настроить панель",
     lblAudit: "<strong>Аудит</strong> (Журнал)",
     msgWarnTitle: "Активен частичный выбор",
-    msgWarnDesc:
-      "Вы анализируете <strong>только</strong> выделенный текст.<br>(Нажмите в любом месте для сброса)",
-    msgChatWelcome:
-      "<strong>👋 ELI</strong>: Задайте вопрос или выберите инструмент, чтобы начать.",
+    msgWarnDesc: "Вы анализируете <strong>только</strong> выделенный текст.<br>(Нажмите в любом месте для сброса)",
+    msgChatWelcome: "<strong>👋 ELI</strong>: Задайте вопрос или выберите инструмент, чтобы начать.",
   },
 }; // 2. Initialize Language Logic
 document.addEventListener("DOMContentLoaded", () => {
@@ -1757,7 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (Array.isArray(json)) {
               // SCHEMA SAFETY CHECK
-              var validItems = json.filter(item => item && typeof item === 'object' && item.email && item.name);
+              var validItems = json.filter((item) => item && typeof item === "object" && item.email && item.name);
               var invalidCount = json.length - validItems.length;
 
               // Load existing from DB first
@@ -1770,7 +1864,6 @@ document.addEventListener("DOMContentLoaded", () => {
                   if (invalidCount > 0) showToast("⚠️ Skipped " + invalidCount + " invalid items");
                 });
               });
-
             } else {
               showToast("⚠️ Invalid Data: Expected Array");
             }
@@ -1803,16 +1896,12 @@ document.addEventListener("DOMContentLoaded", () => {
             var json = JSON.parse(content);
 
             if (Array.isArray(json)) {
-
               loadFeatureData(STORE_TEMPLATES).then(function (existing) {
                 var combined = (existing || []).concat(json);
                 saveFeatureData(STORE_TEMPLATES, combined).then(function () {
                   showToast("✅ Templates Imported (" + json.length + ")");
                 });
               });
-
-
-
             } else {
               // Warning, not crash
               showToast("⚠️ Invalid JSON: Expected an Array.");
@@ -2025,8 +2114,7 @@ const STANDARD_PLAYBOOK = [
     id: "payment",
     name: "Payment Terms",
     types: ["Services", "Clinical", "JDA", "Other"],
-    standard:
-      "Colgate shall pay undisputed invoices within ninety (90) days of receipt.",
+    standard: "Colgate shall pay undisputed invoices within ninety (90) days of receipt.",
     fallbacks: [
       {
         label: "Net 60 Days",
@@ -2074,17 +2162,11 @@ var sessionClauses = [];
 const DEFAULT_PERSONAS = {
   error:
     "You are a professional editor for Colgate. Scan the text for grammatical errors, spelling mistakes, and awkward phrasing.",
-  legal:
-    "You are a Senior Legal Assistant for Colgate. Review this agreement and identify specific legal risks.",
+  legal: "You are a Senior Legal Assistant for Colgate. Review this agreement and identify specific legal risks.",
 };
 // --- CONSTANTS: LOADING MESSAGES (Dental Remix) ---
 const LOADING_MSGS = {
-  default: [
-    "Analyzing document...",
-    "🦷 Scrubbing away errors...",
-    "Processing...",
-    "✨ Polishing the details..."
-  ],
+  default: ["Analyzing document...", "🦷 Scrubbing away errors...", "Processing...", "✨ Polishing the details..."],
   error: [
     "📄 Scanning text...",
     "🪥 Brushing up grammar...",
@@ -2095,7 +2177,7 @@ const LOADING_MSGS = {
     "🧐 Looking for awkward phrasing...",
     "🧴 Squeezing out fresh edits...",
     "✍️ Formulating suggestions...",
-    "✅ Minty fresh finish..."
+    "✅ Minty fresh finish...",
   ],
   legal: [
     "⚖️ Reading agreement...",
@@ -2105,7 +2187,7 @@ const LOADING_MSGS = {
     "🧐 Analyzing liability clauses...",
     "✨ Polishing the fine print...",
     "📝 Drafting risk report...",
-    "🦷 Rinse and repeat..."
+    "🦷 Rinse and repeat...",
   ],
   summary: [
     "📖 Reading full text...",
@@ -2115,7 +2197,7 @@ const LOADING_MSGS = {
     "🧠 Analyzing terms...",
     "🪥 Brushing up the abstract...",
     "📝 Summarizing points...",
-    "✨ Minty fresh results..."
+    "✨ Minty fresh results...",
   ],
   template: [
     "📄 Reading file...",
@@ -2123,7 +2205,7 @@ const LOADING_MSGS = {
     "🧠 Mapping fields...",
     "🦷 Filling cavities in the doc...",
     "✍️ Filling placeholders...",
-    "✨ Polishing final draft..."
+    "✨ Polishing final draft...",
   ],
   redline: [
     "📝 Tracking changes...",
@@ -2133,8 +2215,8 @@ const LOADING_MSGS = {
     "🧠 Analyzing insertions...",
     "🛡️ Enamel protection for your doc...",
     "📊 Calculating risk score...",
-    "✅ Smiles all around..."
-  ]
+    "✅ Smiles all around...",
+  ],
 };
 // ==========================================
 // START: renderToolbar (CRASH PROOF VERSION)
@@ -2142,47 +2224,62 @@ const LOADING_MSGS = {
 function renderToolbar() {
   var container = document.getElementById("mainToolbar");
   if (!container) return;
-  if (typeof TOOL_DEFINITIONS === 'undefined' || !Array.isArray(TOOL_DEFINITIONS)) {
+  if (typeof TOOL_DEFINITIONS === "undefined" || !Array.isArray(TOOL_DEFINITIONS)) {
     setTimeout(renderToolbar, 100);
     return;
   }
   container.innerHTML = "";
 
-  var currentLang = localStorage.getItem('eli_language') || 'en';
+  var currentLang = localStorage.getItem("eli_language") || "en";
 
   // --- SAFETY CHECK: Initialize Defaults if Missing ---
   if (!userSettings.visibleButtons) {
     userSettings.visibleButtons = {
-      error: true, legal: true, summary: true, playbook: true,
-      chat: true, template: true, compare: true, email: true
+      error: true,
+      legal: true,
+      summary: true,
+      playbook: true,
+      chat: true,
+      template: true,
+      compare: true,
+      email: true,
     };
   }
 
   if (!userSettings.buttonPages) {
     userSettings.buttonPages = {
-      error: 1, legal: 1, summary: 1, chat: 1,
-      email: 2, template: 2, playbook: 2, compare: 2
+      error: 1,
+      legal: 1,
+      summary: 1,
+      chat: 1,
+      email: 2,
+      template: 2,
+      playbook: 2,
+      compare: 2,
     };
   }
   // ----------------------------------------------------
 
   // 1. Determine Correct Order
-  var sortOrder = userSettings.toolOrder && userSettings.toolOrder.length > 0
-    ? userSettings.toolOrder
-    : ["error", "legal", "summary", "chat", "playbook", "compare", "template", "email"];
+  var sortOrder =
+    userSettings.toolOrder && userSettings.toolOrder.length > 0
+      ? userSettings.toolOrder
+      : ["error", "legal", "summary", "chat", "playbook", "compare", "template", "email"];
   // --- FIX: Force visibility/paging for active tools ---
   sortOrder.forEach(function (key, index) {
     if (!userSettings.visibleButtons) userSettings.visibleButtons = {};
     if (!userSettings.buttonPages) userSettings.buttonPages = {};
 
     userSettings.visibleButtons[key] = true;
-    userSettings.buttonPages[key] = (index < 4) ? 1 : 2;
+    userSettings.buttonPages[key] = index < 4 ? 1 : 2;
   });
   // ----------------------------------------------------
   var pageButtons = [];
 
   sortOrder.forEach(function (key) {
-    var def = TOOL_DEFINITIONS.find(function (t) { return t.key === key; });
+    var def = TOOL_DEFINITIONS.find(function (t) {
+      return t.key === key;
+    });
     if (!def) return;
 
     // Safe Access
@@ -2198,7 +2295,10 @@ function renderToolbar() {
   var leftArrow = document.createElement("div");
   leftArrow.className = "nav-arrow" + (toolbarPage === 1 ? " hidden-arrow" : "");
   leftArrow.innerHTML = "◀";
-  leftArrow.onclick = function () { toolbarPage = 1; renderToolbar(); };
+  leftArrow.onclick = function () {
+    toolbarPage = 1;
+    renderToolbar();
+  };
   container.appendChild(leftArrow);
 
   // RENDER BUTTONS
@@ -2217,19 +2317,27 @@ function renderToolbar() {
         var gearHtml = t.configAction ? '<span class="btn-config-icon" title="Settings">⚙️</span>' : "";
         var infoHtml = '<span class="btn-info-icon" title="Ask AI">?</span>';
 
-        btn.innerHTML = infoHtml + gearHtml +
-          '<div class="tile-icon">' + t.icon + '</div>' +
-          '<div class="tile-label" data-key="' + (t.i18n || '') + '">' + displayText + '</div>';
+        btn.innerHTML =
+          infoHtml +
+          gearHtml +
+          '<div class="tile-icon">' +
+          t.icon +
+          "</div>" +
+          '<div class="tile-label" data-key="' +
+          (t.i18n || "") +
+          '">' +
+          displayText +
+          "</div>";
 
         // Main Button Click
         btn.onclick = function (e) {
-          if (e.target.classList.contains('btn-config-icon') || e.target.classList.contains('btn-info-icon')) return;
+          if (e.target.classList.contains("btn-config-icon") || e.target.classList.contains("btn-info-icon")) return;
           t.action();
         };
 
         // Settings Gear
         if (t.configAction) {
-          var gear = btn.querySelector('.btn-config-icon');
+          var gear = btn.querySelector(".btn-config-icon");
           if (gear) {
             gear.onclick = function (e) {
               e.preventDefault();
@@ -2240,7 +2348,7 @@ function renderToolbar() {
         }
 
         // Info Icon
-        var infoBtn = btn.querySelector('.btn-info-icon');
+        var infoBtn = btn.querySelector(".btn-info-icon");
         if (infoBtn) {
           infoBtn.onclick = function (e) {
             e.preventDefault();
@@ -2266,7 +2374,10 @@ function renderToolbar() {
   var rightArrow = document.createElement("div");
   rightArrow.className = "nav-arrow" + (toolbarPage === 2 ? " hidden-arrow" : "");
   rightArrow.innerHTML = "▶";
-  rightArrow.onclick = function () { toolbarPage = 2; renderToolbar(); };
+  rightArrow.onclick = function () {
+    toolbarPage = 2;
+    renderToolbar();
+  };
   container.appendChild(rightArrow);
 
   if (typeof applyButtonTheme === "function") applyButtonTheme();
@@ -2275,13 +2386,13 @@ function renderToolbar() {
 // ==========================================
 function init() {
   // --- SAFE LAYOUT FIX ---
-  document.documentElement.style.overflow = "hidden";  // Lock the outer HTML frame
-  document.body.style.overflow = "hidden";             // Lock the Body frame
+  document.documentElement.style.overflow = "hidden"; // Lock the outer HTML frame
+  document.body.style.overflow = "hidden"; // Lock the Body frame
 
   var out = document.getElementById("output");
   if (out) {
-    out.style.height = "100vh";       // Force content to fill the screen
-    out.style.overflowY = "auto";     // Move the scrollbar to here
+    out.style.height = "100vh"; // Force content to fill the screen
+    out.style.overflowY = "auto"; // Move the scrollbar to here
   }
   // -----------------------
 
@@ -2313,10 +2424,11 @@ function init() {
           if (record.name.toLowerCase().endsWith(".docx")) {
             // WORD DOC: Extract Text immediately using Mammoth
             if (typeof mammoth !== "undefined") {
-              mammoth.convertToHtml({ arrayBuffer: record.data })
+              mammoth
+                .convertToHtml({ arrayBuffer: record.data })
                 .then(function (result) {
                   // 1. Get the text
-                  var cleanText = result.value.replace(/<[^>]*>/g, ' ');
+                  var cleanText = result.value.replace(/<[^>]*>/g, " ");
 
                   // 2. SAVE IT TO GLOBAL MEMORY
                   window.AGREEMENT_DATA = { name: record.name, text: cleanText };
@@ -2325,28 +2437,28 @@ function init() {
                   var btn = document.querySelector("#footerBtnViewFile span");
                   if (btn) btn.innerText = "⚡";
                 })
-                .catch(function (e) { console.error("Mammoth Restore Error", e); });
+                .catch(function (e) {
+                  console.error("Mammoth Restore Error", e);
+                });
             }
-          }
-          else if (record.name.toLowerCase().endsWith(".pdf")) {
+          } else if (record.name.toLowerCase().endsWith(".pdf")) {
             // PDF: Load Binary
             var blob = new Blob([record.data]);
             var reader = new FileReader();
             reader.onloadend = function () {
-              var b64 = reader.result.split(',')[1];
+              var b64 = reader.result.split(",")[1];
               // SAVE TO GLOBAL MEMORY
               window.AGREEMENT_DATA = {
                 name: record.name,
                 isBase64: true,
                 mime: "application/pdf",
-                data: b64
+                data: b64,
               };
               var btn = document.querySelector("#footerBtnViewFile span");
               if (btn) btn.innerText = "⚡";
             };
             reader.readAsDataURL(blob);
-          }
-          else {
+          } else {
             // Text File
             var dec = new TextDecoder("utf-8");
             window.AGREEMENT_DATA = { name: record.name, text: dec.decode(record.data) };
@@ -2371,19 +2483,30 @@ function init() {
   // 2. Setup Defaults if missing
   if (!userSettings.visibleButtons) {
     userSettings.visibleButtons = {
-      error: true, legal: true, summary: true, playbook: true,
-      chat: true, template: true, compare: true, email: true
+      error: true,
+      legal: true,
+      summary: true,
+      playbook: true,
+      chat: true,
+      template: true,
+      compare: true,
+      email: true,
     };
   }
 
   if (!userSettings.buttonPages) {
     userSettings.buttonPages = {
-      error: 1, legal: 1, summary: 1, chat: 1,
-      email: 2, template: 2, playbook: 2, compare: 2
+      error: 1,
+      legal: 1,
+      summary: 1,
+      chat: 1,
+      email: 2,
+      template: 2,
+      playbook: 2,
+      compare: 2,
     };
   }
-  if (typeof userSettings.visibleButtons.email === "undefined")
-    userSettings.visibleButtons.email = true;
+  if (typeof userSettings.visibleButtons.email === "undefined") userSettings.visibleButtons.email = true;
 
   // 3. Render UI Components
   // 3. Render UI Components
@@ -2392,16 +2515,16 @@ function init() {
   // --- SURGICAL FIX: Force 'All' Toolbar on every reload ---
   setTimeout(function () {
     toolbarPage = 1; // Reset to Page 1
-    setWorkflowMode('default', true); // Force "All" Toolbar
+    setWorkflowMode("default", true); // Force "All" Toolbar
   }, 100);
   setTimeout(function () {
     var footerLoader = document.getElementById("footerLoaderLocal");
     // Only highlight if it's visible (i.e. not connected to Onit)
-    if (footerLoader && footerLoader.style.display !== 'none') {
+    if (footerLoader && footerLoader.style.display !== "none") {
       // Apply Glow
       footerLoader.style.transition = "all 0.5s ease";
       footerLoader.style.boxShadow = "0 0 10px 2px #29b6f6"; // Blue Glow
-      footerLoader.style.backgroundColor = "#e3f2fd";       // Light Blue BG
+      footerLoader.style.backgroundColor = "#e3f2fd"; // Light Blue BG
       footerLoader.style.borderRadius = "4px";
       footerLoader.style.padding = "0 6px"; // Add padding for box look
 
@@ -2473,8 +2596,6 @@ function init() {
       showInterfaceConfig();
     };
   var chkSnap = document.getElementById("chkAutoSnap");
-
-
 
   // Bind Logic
   if (chkSnap) {
@@ -2595,7 +2716,6 @@ function init() {
         }
       }
     };
-
   }
 
   // F. Pin Toolbar Logic
@@ -2759,7 +2879,9 @@ function init() {
   // 4. Inject "App Store" Button into Settings Menu
   var settingsBody = document.querySelector("#settingsMenu .settings-body");
   if (settingsBody && !document.getElementById("btnOpenAppStore")) {
-    var configHeader = Array.from(document.querySelectorAll('.settings-group-label')).find(el => el.innerText.includes("CONFIGURATION"));
+    var configHeader = Array.from(document.querySelectorAll(".settings-group-label")).find((el) =>
+      el.innerText.includes("CONFIGURATION"),
+    );
     if (configHeader && configHeader.parentElement) {
       var storeBtn = document.createElement("div");
       storeBtn.id = "btnOpenAppStore";
@@ -2833,14 +2955,18 @@ function runInteractiveErrorCheck(onDoneCallback, isFastMode) {
     } else {
       // --- STANDARD LOGIC ---
       var mode = userSettings.sensitivity || "Balanced";
-      instructions = "TASK 1: GRAMMAR & SPELLING\nIdentify critical grammatical errors, spelling mistakes, and awkward phrasing.\n";
+      instructions =
+        "TASK 1: GRAMMAR & SPELLING\nIdentify critical grammatical errors, spelling mistakes, and awkward phrasing.\n";
 
-      if (userSettings.checkBrokenRefs) instructions += "\nTASK 2: BROKEN CROSS-REFERENCES\nIdentify broken internal references.\n";
+      if (userSettings.checkBrokenRefs)
+        instructions += "\nTASK 2: BROKEN CROSS-REFERENCES\nIdentify broken internal references.\n";
       else instructions += "\nExclusion Rule: Do NOT report broken cross-references.\n";
 
-      if (mode === "Picky") instructions += "\nTASK 3: DEFINITION X-RAY\nScan for Capitalized words not defined in the text.\n";
+      if (mode === "Picky")
+        instructions += "\nTASK 3: DEFINITION X-RAY\nScan for Capitalized words not defined in the text.\n";
 
-      if (userSettings.dialect === "UK") instructions += "\nIMPORTANT: Enforce UK/British spelling. Flag US spellings.\n";
+      if (userSettings.dialect === "UK")
+        instructions += "\nIMPORTANT: Enforce UK/British spelling. Flag US spellings.\n";
       else instructions += "\nIMPORTANT: Enforce US spelling. Flag UK spellings.\n";
 
       if (userSettings.strictMode) instructions += "\nSTRICT MODE: Flag passive voice and weak verbs.\n";
@@ -2849,29 +2975,24 @@ function runInteractiveErrorCheck(onDoneCallback, isFastMode) {
     }
     // ----------------------
     if (userSettings.dialect === "UK")
-      instructions +=
-        "\nIMPORTANT: Enforce UK/British spelling (Colour, Centre). Flag US spellings.\n";
-    else
-      instructions += "\nIMPORTANT: Enforce US spelling. Flag UK spellings.\n";
+      instructions += "\nIMPORTANT: Enforce UK/British spelling (Colour, Centre). Flag US spellings.\n";
+    else instructions += "\nIMPORTANT: Enforce US spelling. Flag UK spellings.\n";
 
-    if (userSettings.strictMode)
-      instructions += "\nSTRICT MODE: Flag passive voice and weak verbs.\n";
+    if (userSettings.strictMode) instructions += "\nSTRICT MODE: Flag passive voice and weak verbs.\n";
 
     instructions += getFeedbackInstructions();
 
-    return callGemini(API_KEY, PROMPTS.ERROR_CHECK(instructions, text)).then(
-      function (jsonString) {
-        var rawData = tryParseGeminiJSON(jsonString);
-        return validateErrorData(rawData); // <--- Validation happens here
-      },
-    );
+    return callGemini(API_KEY, PROMPTS.ERROR_CHECK(instructions, text)).then(function (jsonString) {
+      var rawData = tryParseGeminiJSON(jsonString);
+      return validateErrorData(rawData); // <--- Validation happens here
+    });
   });
 
   // --- CHANGE: Conditional Execution ---
 
   // --- OPTIMIZATION: SKIP FOOTER IN FAST MODE ---
   // If we are in Fast Mode, force this to false regardless of settings.
-  var shouldCheck = (!isFastMode && userSettings.checkFooterRef);
+  var shouldCheck = !isFastMode && userSettings.checkFooterRef;
 
   // If true, run scan. If false, return empty promise immediately.
   var p2 = shouldCheck ? checkFooterConsistency() : Promise.resolve([]);
@@ -2884,32 +3005,29 @@ function runInteractiveErrorCheck(onDoneCallback, isFastMode) {
       var allErrors = footerErrors.concat(aiErrors);
 
       if (allErrors.length === 0) {
-        showOutput(
-          "✅ No errors found in Body" +
-          (userSettings.checkFooterRef ? " or Footers." : "."),
-        );
+        showOutput("✅ No errors found in Body" + (userSettings.checkFooterRef ? " or Footers." : "."));
 
         // --- INSERT THIS BLOCK ---
         if (typeof onDoneCallback === "function") {
           var btn = document.createElement("button");
           btn.className = "btn-action";
           // Check wizard flag for smart label
-          btn.innerText = (window.eliWizardMode) ? "💾 Next: Save and/or Send ➔" : "⬅ Done / Back to Hub";
+          btn.innerText = window.eliWizardMode ? "💾 Next: Save and/or Send ➔" : "⬅ Done / Back to Hub";
           btn.style.marginTop = "15px";
           btn.onclick = onDoneCallback;
           document.getElementById("output").appendChild(btn);
         }
         // ------------------------
-
       } else {
         renderCards(allErrors, "error", onDoneCallback);
         // --- NEW: INJECT BOTTOM BUTTON ---
         if (typeof onDoneCallback === "function") {
           var btnBottom = document.createElement("button");
           btnBottom.className = "btn-action";
-          btnBottom.innerText = (window.eliWizardMode) ? "💾 Next: Save and/or Send ➔" : "⬅ Done / Back to Hub";
+          btnBottom.innerText = window.eliWizardMode ? "💾 Next: Save and/or Send ➔" : "⬅ Done / Back to Hub";
           // Distinct Style for Bottom Button
-          btnBottom.style.cssText = "width:100%; margin-top:20px; margin-bottom:20px; background:#fff3e0; color:#e65100; border:1px solid #ffe0b2; font-weight:bold;";
+          btnBottom.style.cssText =
+            "width:100%; margin-top:20px; margin-bottom:20px; background:#fff3e0; color:#e65100; border:1px solid #ffe0b2; font-weight:bold;";
           btnBottom.onclick = safeCallback;
           document.getElementById("output").appendChild(btnBottom);
         }
@@ -2962,15 +3080,8 @@ function runSummary() {
         try {
           var localCustom = JSON.parse(storedKeys);
           // If the user hasn't "Saved Settings" yet, use these as a fallback
-          keysList = [
-            "Parties",
-            "Effective Date",
-            "Term Length",
-            "Liability Cap",
-            "Governing Law",
-            "Financials",
-          ];
-        } catch (e) { }
+          keysList = ["Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials"];
+        } catch (e) {}
       }
 
       // 3. BUILD THE EXTRACTION STRING
@@ -2980,10 +3091,7 @@ function runSummary() {
         for (var i = 0; i < keysList.length; i++) {
           var k = keysList[i];
           var safeKey = k.replace(/ /g, "_");
-          keysString +=
-            '"' +
-            safeKey +
-            '": { "value": "extracted info...", "quote": "exact text..." },\n';
+          keysString += '"' + safeKey + '": { "value": "extracted info...", "quote": "exact text..." },\n';
         }
       }
 
@@ -3045,21 +3153,39 @@ function showSummaryAudienceSelection(text) {
   // --- DATA LOADING ---
   var savedPrefs = userSettings.summaryPreferences || { audience: "lawyer", customInput: "", keys: [] };
   var localCustomKeys = [];
-  try { localCustomKeys = JSON.parse(localStorage.getItem("colgate_custom_summary_keys") || "[]"); } catch (e) { }
+  try {
+    localCustomKeys = JSON.parse(localStorage.getItem("colgate_custom_summary_keys") || "[]");
+  } catch (e) {}
 
   var hardcodedDefaults = [
-    "Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials",
-    "Termination Notice", "Indemnity", "Jurisdiction", "Renewal", "Payment Terms", "Late Fees", "Total Contract Value", "Price Increases"
+    "Parties",
+    "Effective Date",
+    "Term Length",
+    "Liability Cap",
+    "Governing Law",
+    "Financials",
+    "Termination Notice",
+    "Indemnity",
+    "Jurisdiction",
+    "Renewal",
+    "Payment Terms",
+    "Late Fees",
+    "Total Contract Value",
+    "Price Increases",
   ];
   var combined = hardcodedDefaults.concat(localCustomKeys);
   var allKeys = combined.filter((v, i, a) => a.indexOf(v) === i); // Dedupe
 
-  var selectedKeys = (savedPrefs.keys && savedPrefs.keys.length > 0) ? savedPrefs.keys.slice() : ["Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials"];
+  var selectedKeys =
+    savedPrefs.keys && savedPrefs.keys.length > 0
+      ? savedPrefs.keys.slice()
+      : ["Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials"];
 
   // --- UI RENDER ---
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding: 0; border: 1px solid #d1d5db; border-left: 5px solid #1565c0; background: #fff; border-radius:0px;";
+  card.style.cssText =
+    "padding: 0; border: 1px solid #d1d5db; border-left: 5px solid #1565c0; background: #fff; border-radius:0px;";
 
   // PREMIUM HEADER
   var header = document.createElement("div");
@@ -3131,7 +3257,11 @@ function showSummaryAudienceSelection(text) {
   // Restore State
   if (savedPrefs.audience) {
     if (["lawyer", "non-lawyer", "finance"].indexOf(savedPrefs.audience) !== -1) select.value = savedPrefs.audience;
-    else { select.value = "custom"; customInput.classList.remove("hidden"); customInput.value = savedPrefs.audience; }
+    else {
+      select.value = "custom";
+      customInput.classList.remove("hidden");
+      customInput.value = savedPrefs.audience;
+    }
   }
 
   // Render List Helper
@@ -3140,7 +3270,8 @@ function showSummaryAudienceSelection(text) {
     allKeys.forEach(function (key) {
       var isChecked = selectedKeys.indexOf(key) !== -1;
       var row = document.createElement("label");
-      row.style.cssText = "display:flex; align-items:center; padding:6px 0; font-size:12px; color:#333; cursor:pointer; border-bottom:1px solid #eee; margin:0;";
+      row.style.cssText =
+        "display:flex; align-items:center; padding:6px 0; font-size:12px; color:#333; cursor:pointer; border-bottom:1px solid #eee; margin:0;";
 
       var chk = document.createElement("input");
       chk.type = "checkbox";
@@ -3149,8 +3280,10 @@ function showSummaryAudienceSelection(text) {
 
       chk.onchange = function () {
         if (this.checked) {
-          if (selectedKeys.length >= 6) { this.checked = false; showToast("⚠️ Max 6 terms allowed."); }
-          else selectedKeys.push(key);
+          if (selectedKeys.length >= 6) {
+            this.checked = false;
+            showToast("⚠️ Max 6 terms allowed.");
+          } else selectedKeys.push(key);
         } else {
           var idx = selectedKeys.indexOf(key);
           if (idx > -1) selectedKeys.splice(idx, 1);
@@ -3165,15 +3298,19 @@ function showSummaryAudienceSelection(text) {
     updateCount();
   }
 
-  function updateCount() { counter.innerText = selectedKeys.length + "/6 Selected"; }
+  function updateCount() {
+    counter.innerText = selectedKeys.length + "/6 Selected";
+  }
 
   select.onchange = function () {
     if (select.value === "custom") customInput.classList.remove("hidden");
     else customInput.classList.add("hidden");
 
     // Auto-select presets
-    if (select.value === "finance") selectedKeys = ["Parties", "Payment Terms", "Late Fees", "Total Contract Value", "Renewal", "Price Increases"];
-    else if (select.value !== "custom") selectedKeys = ["Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials"];
+    if (select.value === "finance")
+      selectedKeys = ["Parties", "Payment Terms", "Late Fees", "Total Contract Value", "Renewal", "Price Increases"];
+    else if (select.value !== "custom")
+      selectedKeys = ["Parties", "Effective Date", "Term Length", "Liability Cap", "Governing Law", "Financials"];
 
     renderList();
   };
@@ -3231,15 +3368,21 @@ function runTemplateScan() {
     await context.sync();
 
     sections.items.forEach(function (section) {
-      ['Primary', 'FirstPage', 'EvenPages'].forEach(function (type) {
-        try { rangesToLoad.push(section.getHeader(type)); } catch (e) { }
-        try { rangesToLoad.push(section.getFooter(type)); } catch (e) { }
+      ["Primary", "FirstPage", "EvenPages"].forEach(function (type) {
+        try {
+          rangesToLoad.push(section.getHeader(type));
+        } catch (e) {}
+        try {
+          rangesToLoad.push(section.getFooter(type));
+        } catch (e) {}
       });
     });
 
     // C. Load Text for All Ranges
     // We strictly load only the 'text' property to be efficient
-    rangesToLoad.forEach(function (r) { r.load("text"); });
+    rangesToLoad.forEach(function (r) {
+      r.load("text");
+    });
 
     await context.sync();
 
@@ -3294,7 +3437,8 @@ function renderTemplateForm(placeholders) {
 
   if (!placeholders || placeholders.length === 0) {
     // RESTORED: Detailed instructions style
-    out.innerHTML += "<div class='text-block' style='background:#f5f5f5; border-color:#ddd; color:#555'><b>No placeholders detected.</b><br><br>1. Open an ELI template that has [[Brackets]].</div>";
+    out.innerHTML +=
+      "<div class='text-block' style='background:#f5f5f5; border-color:#ddd; color:#555'><b>No placeholders detected.</b><br><br>1. Open an ELI template that has [[Brackets]].</div>";
 
     var btnHomeEmpty = document.createElement("button");
     btnHomeEmpty.className = "btn-action";
@@ -3310,7 +3454,8 @@ function renderTemplateForm(placeholders) {
 
   var sourceData = window.AGREEMENT_DATA || AGREEMENT_DATA;
   // FIX: Check global variable explicitly if window.AGREEMENT_DATA is undefined
-  var hasAgreement = (typeof AGREEMENT_DATA !== 'undefined' && AGREEMENT_DATA && AGREEMENT_DATA.name) ||
+  var hasAgreement =
+    (typeof AGREEMENT_DATA !== "undefined" && AGREEMENT_DATA && AGREEMENT_DATA.name) ||
     (window.AGREEMENT_DATA && window.AGREEMENT_DATA.name);
 
   if (hasAgreement) {
@@ -3319,7 +3464,8 @@ function renderTemplateForm(placeholders) {
     // CASE A: File Loaded in Footer
     var loadedBox = document.createElement("div");
     loadedBox.className = "tool-box slide-in";
-    loadedBox.style.cssText = "padding:20px; border:1px solid #90caf9; background:#f0f7ff; border-left:5px solid #1565c0; margin-bottom:20px; border-radius:0px;";
+    loadedBox.style.cssText =
+      "padding:20px; border:1px solid #90caf9; background:#f0f7ff; border-left:5px solid #1565c0; margin-bottom:20px; border-radius:0px;";
 
     loadedBox.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -3341,7 +3487,8 @@ function renderTemplateForm(placeholders) {
     btnFill.onclick = function () {
       btnFill.innerHTML = "⏳ Filling...";
       statusDiv.style.display = "block";
-      statusDiv.innerHTML = "<div class='spinner' style='width:12px;height:12px;border-width:2px;display:inline-block;'></div> Reading RAM data...";
+      statusDiv.innerHTML =
+        "<div class='spinner' style='width:12px;height:12px;border-width:2px;display:inline-block;'></div> Reading RAM data...";
       btnFill.disabled = true;
 
       // 1. GET TEXT DIRECTLY FROM RAM (No DB call needed)
@@ -3355,7 +3502,8 @@ function renderTemplateForm(placeholders) {
       var textToAnalyze = sourceData.text || "";
 
       // 2. RUN AI
-      statusDiv.innerHTML = "<div class='spinner' style='width:12px;height:12px;border-width:2px;display:inline-block;'></div> Analyzing data...";
+      statusDiv.innerHTML =
+        "<div class='spinner' style='width:12px;height:12px;border-width:2px;display:inline-block;'></div> Analyzing data...";
 
       var cleanKeys = placeholders.map(function (ph) {
         var clean = ph.replace(/[\[\]{}]/g, "").replace(/^(\$!|\$|!)/, "");
@@ -3363,52 +3511,51 @@ function renderTemplateForm(placeholders) {
         return clean;
       });
 
-      var prompt = PROMPTS.TEMPLATE_MAP(
-        cleanKeys,
-        textToAnalyze.substring(0, 500000)
-      );
+      var prompt = PROMPTS.TEMPLATE_MAP(cleanKeys, textToAnalyze.substring(0, 500000));
 
-      callGemini(API_KEY, prompt).then(function (result) {
-        try {
-          var mapping = tryParseGeminiJSON(result);
-          var inputs = out.querySelectorAll(".template-input");
-          var count = 0;
-          inputs.forEach(function (inp) {
-            var val = mapping[inp.dataset.target] || mapping[inp.dataset.aiKey];
-            if (val) {
-              if (typeof smartFillInput === 'function') {
-                smartFillInput(inp, val);
+      callGemini(API_KEY, prompt)
+        .then(function (result) {
+          try {
+            var mapping = tryParseGeminiJSON(result);
+            var inputs = out.querySelectorAll(".template-input");
+            var count = 0;
+            inputs.forEach(function (inp) {
+              var val = mapping[inp.dataset.target] || mapping[inp.dataset.aiKey];
+              if (val) {
+                if (typeof smartFillInput === "function") {
+                  smartFillInput(inp, val);
+                } else {
+                  inp.value = val;
+                  inp.style.borderColor = "#2e7d32";
+                  inp.style.backgroundColor = "#fff";
+                }
+                count++;
               } else {
-                inp.value = val;
-                inp.style.borderColor = "#2e7d32";
-                inp.style.backgroundColor = "#fff";
+                inp.style.borderColor = "#c62828";
+                inp.style.backgroundColor = "#ffebee";
               }
-              count++;
-            } else {
-              inp.style.borderColor = "#c62828";
-              inp.style.backgroundColor = "#ffebee";
-            }
-          });
-          // --- SURGICAL EDIT START ---
-          var missing = inputs.length - count;
-          statusDiv.innerHTML = "✅ Filled " + count + " fields. <span style='color:#c62828'>Missing " + missing + " fields.</span>";
-          // --- SURGICAL EDIT END ---
+            });
+            // --- SURGICAL EDIT START ---
+            var missing = inputs.length - count;
+            statusDiv.innerHTML =
+              "✅ Filled " + count + " fields. <span style='color:#c62828'>Missing " + missing + " fields.</span>";
+            // --- SURGICAL EDIT END ---
 
+            btnFill.disabled = false;
+            btnFill.innerHTML = "⚡ Auto-Fill Fields";
+          } catch (err) {
+            console.error(err);
+            statusDiv.innerHTML = "❌ Error parsing AI response.";
+            btnFill.disabled = false;
+            btnFill.innerHTML = "⚡ Auto-Fill Fields";
+          }
+        })
+        .catch(function (err) {
+          statusDiv.innerHTML = "❌ API Error: " + err.message;
           btnFill.disabled = false;
           btnFill.innerHTML = "⚡ Auto-Fill Fields";
-        } catch (err) {
-          console.error(err);
-          statusDiv.innerHTML = "❌ Error parsing AI response.";
-          btnFill.disabled = false;
-          btnFill.innerHTML = "⚡ Auto-Fill Fields";
-        }
-      }).catch(function (err) {
-        statusDiv.innerHTML = "❌ API Error: " + err.message;
-        btnFill.disabled = false;
-        btnFill.innerHTML = "⚡ Auto-Fill Fields";
-      });
+        });
     };
-
   } else {
     // CASE B: Manual Upload (Original Logic)
     var uploadBox = document.createElement("div");
@@ -3432,8 +3579,14 @@ function renderTemplateForm(placeholders) {
       `;
 
     // Hover Effects
-    dropZone.onmouseover = function () { this.style.backgroundColor = "#e3f2fd"; this.style.borderColor = "#1565c0"; };
-    dropZone.onmouseout = function () { this.style.backgroundColor = "#f0f7ff"; this.style.borderColor = "#90caf9"; };
+    dropZone.onmouseover = function () {
+      this.style.backgroundColor = "#e3f2fd";
+      this.style.borderColor = "#1565c0";
+    };
+    dropZone.onmouseout = function () {
+      this.style.backgroundColor = "#f0f7ff";
+      this.style.borderColor = "#90caf9";
+    };
 
     // New Content with Icon & Subtext
     dropZone.innerHTML = `
@@ -3451,7 +3604,9 @@ function renderTemplateForm(placeholders) {
     fileInput.type = "file";
     fileInput.style.display = "none";
 
-    dropZone.onclick = function () { fileInput.click(); };
+    dropZone.onclick = function () {
+      fileInput.click();
+    };
     fileInput.onchange = function (e) {
       // Added "Reading File..." spinner state
       dropZone.innerHTML = `<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;border-color:#1565c0 transparent #1565c0 transparent;"></div><div style="font-size:11px;font-weight:bold;color:#1565c0;margin-top:6px;">Reading File...</div>`;
@@ -3468,7 +3623,8 @@ function renderTemplateForm(placeholders) {
 
   placeholders.forEach(function (ph) {
     // CLEANING LOGIC: Removes "$", "!" from the display label (Removed *)
-    var rawText = ph.replace(/[\[\]{}]/g, "")  // Remove brackets
+    var rawText = ph
+      .replace(/[\[\]{}]/g, "") // Remove brackets
       .replace(/^(\$!|\$|!)/, ""); // Removes $! OR $ OR !
 
     var labelText = rawText;
@@ -3503,11 +3659,20 @@ function renderTemplateForm(placeholders) {
     var locBtn = document.createElement("span");
     locBtn.innerHTML = "Locate📍";
     locBtn.title = "Locate in Document";
-    locBtn.style.cssText = "cursor:pointer; font-size:12px; opacity:0.6; transition:all 0.2s; padding:2px 6px; border-radius:4px; background:rgba(0,0,0,0.03);";
+    locBtn.style.cssText =
+      "cursor:pointer; font-size:12px; opacity:0.6; transition:all 0.2s; padding:2px 6px; border-radius:4px; background:rgba(0,0,0,0.03);";
 
     // Hover Effects
-    locBtn.onmouseover = function () { this.style.opacity = "1"; this.style.background = "#e3f2fd"; this.style.color = "#1565c0"; };
-    locBtn.onmouseout = function () { this.style.opacity = "0.6"; this.style.background = "rgba(0,0,0,0.03)"; this.style.color = ""; };
+    locBtn.onmouseover = function () {
+      this.style.opacity = "1";
+      this.style.background = "#e3f2fd";
+      this.style.color = "#1565c0";
+    };
+    locBtn.onmouseout = function () {
+      this.style.opacity = "0.6";
+      this.style.background = "rgba(0,0,0,0.03)";
+      this.style.color = "";
+    };
 
     label.appendChild(locBtn);
 
@@ -3515,7 +3680,8 @@ function renderTemplateForm(placeholders) {
     if (ph.startsWith("$![")) {
       var payBadge = document.createElement("span");
       payBadge.innerText = "Payment terms helper will open on completion.";
-      payBadge.style.cssText = "font-size:10px; color:#2e7d32; font-style:italic; margin-right:auto; margin-left:8px; display:block;";
+      payBadge.style.cssText =
+        "font-size:10px; color:#2e7d32; font-style:italic; margin-right:auto; margin-left:8px; display:block;";
       label.insertBefore(payBadge, locBtn);
     }
 
@@ -3537,8 +3703,8 @@ function renderTemplateForm(placeholders) {
     input.rows = 1;
     input.style.cssText = "width:100%; resize:none; overflow:hidden; min-height:28px;";
     input.addEventListener("input", function () {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
+      this.style.height = "auto";
+      this.style.height = this.scrollHeight + "px";
 
       // FIX: Clear hidden "smart" data if user manually types
       // This ensures we rely on the manual input value instead of stale auto-fill data
@@ -3561,16 +3727,20 @@ function renderTemplateForm(placeholders) {
   applyBtn.className = "btn-action";
   applyBtn.innerHTML = "FILL ALL FIELDS";
   applyBtn.style.width = "100%";
-  applyBtn.onclick = function () { applyTemplateValues(formContainer); };
+  applyBtn.onclick = function () {
+    applyTemplateValues(formContainer);
+  };
 
   btnRow.appendChild(applyBtn);
   formContainer.appendChild(btnRow);
   out.appendChild(formContainer);
   // --- RESTORED: SMART FILL TOOL (Paste Blob) ---
   var smartDivider = document.createElement("div");
-  smartDivider.style.cssText = "margin: 30px 0 15px 0; border-top: 1px dashed #ddd; text-align:center; height: 10px; cursor: pointer;";
+  smartDivider.style.cssText =
+    "margin: 30px 0 15px 0; border-top: 1px dashed #ddd; text-align:center; height: 10px; cursor: pointer;";
   smartDivider.title = "Click to show/hide tools";
-  smartDivider.innerHTML = "<span id='smartLabel' style='background:#fff; padding:0 10px; color:#999; font-size:10px; position:relative; top:-10px; font-weight:700;'>SMART TOOLS ▼</span>";
+  smartDivider.innerHTML =
+    "<span id='smartLabel' style='background:#fff; padding:0 10px; color:#999; font-size:10px; position:relative; top:-10px; font-weight:700;'>SMART TOOLS ▼</span>";
   out.appendChild(smartDivider);
 
   var magicBox = document.createElement("div");
@@ -3640,31 +3810,24 @@ function handleTemplateFileUpload(event, placeholders, container) {
     // 1. Animation Logic
     var msgs = LOADING_MSGS.template;
     var msgIdx = 0;
-    btnZone.innerHTML =
-      "<div class='spinner' style='width:16px;height:16px;border-width:2px;'></div> " +
-      msgs[0];
+    btnZone.innerHTML = "<div class='spinner' style='width:16px;height:16px;border-width:2px;'></div> " + msgs[0];
 
     var tmplInterval = setInterval(function () {
       msgIdx = (msgIdx + 1) % msgs.length;
       if (msgIdx === 0) msgIdx = 1;
       btnZone.innerHTML =
-        "<div class='spinner' style='width:16px;height:16px;border-width:2px;'></div> " +
-        msgs[msgIdx];
+        "<div class='spinner' style='width:16px;height:16px;border-width:2px;'></div> " + msgs[msgIdx];
     }, 1500);
 
     // 2. Call AI
     // NEW: Clean placeholders for AI (Handle || pipe)
     var cleanKeys = placeholders.map(function (ph) {
-      var clean = ph.replace(/[\[\]{}]/g, "")
-        .replace(/^(\$!|\$|!)/, "");
+      var clean = ph.replace(/[\[\]{}]/g, "").replace(/^(\$!|\$|!)/, "");
       if (clean.includes("||")) return clean.split("||")[0].trim();
       return clean;
     });
 
-    var prompt = PROMPTS.TEMPLATE_MAP(
-      cleanKeys,
-      contentText.substring(0, 8000),
-    ); // Increased limit slightly
+    var prompt = PROMPTS.TEMPLATE_MAP(cleanKeys, contentText.substring(0, 8000)); // Increased limit slightly
     callGemini(API_KEY, prompt)
       .then(function (result) {
         clearInterval(tmplInterval);
@@ -3761,8 +3924,14 @@ function runSmartFill(pastedText, btnElement) {
     if (inp.dataset.target) placeholders.push(inp.dataset.target);
   });
 
-  if (placeholders.length === 0) { showToast("⚠️ No fields to fill."); return; }
-  if (!pastedText || pastedText.trim().length === 0) { showToast("⚠️ Paste text first."); return; }
+  if (placeholders.length === 0) {
+    showToast("⚠️ No fields to fill.");
+    return;
+  }
+  if (!pastedText || pastedText.trim().length === 0) {
+    showToast("⚠️ Paste text first.");
+    return;
+  }
 
   var originalText = btnElement.innerHTML;
   btnElement.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px;"></div>';
@@ -3770,18 +3939,19 @@ function runSmartFill(pastedText, btnElement) {
 
   var prompt = PROMPTS.TEMPLATE_MAP(placeholders, pastedText);
 
-  callGemini(API_KEY, prompt).then(function (result) {
-    var mapping = tryParseGeminiJSON(result);
-    var count = 0;
-    inputs.forEach(function (inp) {
-      if (mapping[inp.dataset.target]) {
-        // USE NEW HELPER HERE
-        smartFillInput(inp, mapping[inp.dataset.target]);
-        count++;
-      }
-    });
-    showToast(`✨ Filled ${count} fields.`);
-  })
+  callGemini(API_KEY, prompt)
+    .then(function (result) {
+      var mapping = tryParseGeminiJSON(result);
+      var count = 0;
+      inputs.forEach(function (inp) {
+        if (mapping[inp.dataset.target]) {
+          // USE NEW HELPER HERE
+          smartFillInput(inp, mapping[inp.dataset.target]);
+          count++;
+        }
+      });
+      showToast(`✨ Filled ${count} fields.`);
+    })
     .catch(handleError)
     .finally(function () {
       btnElement.innerHTML = originalText;
@@ -3820,7 +3990,9 @@ function applyTemplateValues(container) {
 
     // Parse Targets
     var targets = [];
-    try { targets = JSON.parse(input.dataset.targets || "[]"); } catch (e) { }
+    try {
+      targets = JSON.parse(input.dataset.targets || "[]");
+    } catch (e) {}
     if (targets.length === 0 && input.dataset.target) targets = [input.dataset.target];
 
     targets.forEach(function (t) {
@@ -3839,7 +4011,7 @@ function applyTemplateValues(container) {
           standardReplacements.push({
             target: t,
             val: val,
-            isCurrency: true
+            isCurrency: true,
           });
           // CAPTURE THE FEE AMOUNT for the Modal!
           // If we find a valid fee, we save it.
@@ -3851,26 +4023,23 @@ function applyTemplateValues(container) {
         // We add to kill list to ensure cleanup if it wasn't replaced (e.g. if we blocked it)
         // But if we blocked it, we want it empty? Yes.
         tagsToKill.push(t);
-
       } else if (cleanT.indexOf("![") === 0) {
-
         // TERM LOGIC -> Candidate for Modal
         // Even if EMPTY, we add it as a candidate. Why?
-        // Because if we have a Fee ($![...]), we might want to trigger the modal 
+        // Because if we have a Fee ($![...]), we might want to trigger the modal
         // to generate the schedule for the Terms field, even if the user didn't type anything in Terms.
-        var candidateVal = (input.value && input.value.trim() !== "") ? input.value : (input.dataset.fullTerms || "");
+        var candidateVal = input.value && input.value.trim() !== "" ? input.value : input.dataset.fullTerms || "";
         paymentCandidates.push({
           target: t,
           val: candidateVal,
-          element: input
+          element: input,
         });
-
       } else {
         // Standard Field
         standardReplacements.push({
           target: t,
           val: val,
-          isCurrency: cleanT.indexOf("$[") === 0
+          isCurrency: cleanT.indexOf("$[") === 0,
         });
       }
     });
@@ -3879,15 +4048,13 @@ function applyTemplateValues(container) {
   // --- NEW: Process Payment Candidates ---
   // We collected potential payment triggers. Now pick the BEST one, and treat others as standard fills.
   if (paymentCandidates.length > 0) {
-
     paymentCandidates.sort(function (a, b) {
-      var aManual = (a.element.value && a.element.value.trim() !== "");
-      var bManual = (b.element.value && b.element.value.trim() !== "");
+      var aManual = a.element.value && a.element.value.trim() !== "";
+      var bManual = b.element.value && b.element.value.trim() !== "";
       if (aManual && !bManual) return -1; // a wins
-      if (!aManual && bManual) return 1;  // b wins
+      if (!aManual && bManual) return 1; // b wins
       return (b.val || "").length - (a.val || "").length; // Longer wins (usually Terms description)
     });
-
 
     if (!paymentCandidates[0].val && !paymentCandidates[0].element.value && !window.detectedFeeAmount) {
       feeTrigger = null;
@@ -3907,7 +4074,7 @@ function applyTemplateValues(container) {
         standardReplacements.push({
           target: cand.target,
           val: cand.val, // Use its own value
-          isCurrency: cand.target.indexOf("$![") === 0
+          isCurrency: cand.target.indexOf("$![") === 0,
         });
         // Also add to kill list
         tagsToKill.push(cand.target);
@@ -3918,7 +4085,9 @@ function applyTemplateValues(container) {
   // --- B. EXECUTION HELPER (Standard) ---
   var runBatch = function (listToFill) {
     if (listToFill.length === 0) return Promise.resolve(0);
-    listToFill.sort(function (a, b) { return b.target.length - a.target.length; });
+    listToFill.sort(function (a, b) {
+      return b.target.length - a.target.length;
+    });
 
     return Word.run(async function (context) {
       var sections = context.document.sections;
@@ -3967,7 +4136,7 @@ function applyTemplateValues(container) {
                   count++;
                 }
               }
-            } catch (e) { }
+            } catch (e) {}
           }
         }
       }
@@ -3980,7 +4149,9 @@ function applyTemplateValues(container) {
     if (!tagsList || tagsList.length === 0) return Promise.resolve(0);
 
     // Unique list to avoid duplicate searches
-    var uniqueTags = tagsList.filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var uniqueTags = tagsList.filter(function (v, i, a) {
+      return a.indexOf(v) === i;
+    });
 
     return Word.run(async function (context) {
       var deletedCount = 0;
@@ -4019,11 +4190,7 @@ function applyTemplateValues(container) {
     // 1. Fill Standard Fields
     runBatch(standardReplacements)
       .then(function (count) {
-
         if (feeTrigger && ((feeTrigger.val && feeTrigger.val.trim() !== "") || window.detectedFeeAmount)) {
-
-
-
           // Pass the FULL TERMS (from dataset) if available, otherwise the value.
           var scheduleContext = feeTrigger.element.dataset.fullTerms || feeTrigger.val;
           var modalVal = window.detectedFeeAmount ? window.detectedFeeAmount : feeTrigger.val;
@@ -4039,7 +4206,6 @@ function applyTemplateValues(container) {
               });
             });
           });
-
         } else {
           // 3. Cleanup immediately if no modal needed
           cleanupSpecificTags(tagsToKill).then(function () {
@@ -4049,7 +4215,10 @@ function applyTemplateValues(container) {
       })
       .catch(function (e) {
         console.error(e);
-        if (btn) { btn.innerText = "Error"; btn.disabled = false; }
+        if (btn) {
+          btn.innerText = "Error";
+          btn.disabled = false;
+        }
         showOutput("Error: " + e.message, true);
       });
   };
@@ -4057,11 +4226,13 @@ function applyTemplateValues(container) {
   // --- E. MISSING CHECK ---
   if (missingFields.length > 0) {
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
     var dialog = document.createElement("div");
     dialog.className = "tool-box slide-in";
-    dialog.style.cssText = "background:white; width:300px; padding:20px; border-left:5px solid #f57f17; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+    dialog.style.cssText =
+      "background:white; width:300px; padding:20px; border-left:5px solid #f57f17; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
     dialog.innerHTML = `
             <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
@@ -4118,14 +4289,16 @@ function applyTemplateValues(container) {
 
   function showVerificationModal(count, btn) {
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
     var dialog = document.createElement("div");
     dialog.className = "tool-box slide-in";
-    dialog.style.cssText = "background:white; width:300px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #ffa000; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
+    dialog.style.cssText =
+      "background:white; width:300px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #ffa000; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
 
     // --- CHECK FOR LOADED FILE ---
-    var hasFile = (typeof AGREEMENT_DATA !== 'undefined' && AGREEMENT_DATA);
+    var hasFile = typeof AGREEMENT_DATA !== "undefined" && AGREEMENT_DATA;
     var viewBtnHtml = "";
 
     if (hasFile) {
@@ -4216,23 +4389,21 @@ function applyTemplateValues(container) {
         sections.load("items");
         await context.sync();
 
-        sections.items.forEach(sec => {
-          ['Primary', 'FirstPage', 'EvenPages'].forEach(type => {
+        sections.items.forEach((sec) => {
+          ["Primary", "FirstPage", "EvenPages"].forEach((type) => {
             try {
               sec.getHeader(type).font.highlightColor = null;
               sec.getFooter(type).font.highlightColor = null;
-            } catch (e) { }
+            } catch (e) {}
           });
         });
 
         await context.sync();
       })
         .then(() => {
-
           // --- NEW SNAPSHOT LOGIC HERE ---
           // We use a generic label because we don't know the final filename yet
           createSnapshot("Auto-Fill Verified [Original Version]", null, function () {
-
             showToast("✅ Verified & Snapshot Taken");
 
             if (btn) {
@@ -4249,7 +4420,7 @@ function applyTemplateValues(container) {
             }
           });
         })
-        .catch(e => {
+        .catch((e) => {
           console.error("Cleanup error: " + e);
           showToast("⚠️ Error removing highlights");
         });
@@ -4277,9 +4448,10 @@ function showChatInterface() {
   var welcome = document.createElement("div");
   welcome.className = "chat-bubble chat-ai";
   var currentLang = localStorage.getItem("eli_language") || "en";
-  var welcomeText = (typeof dictionary !== "undefined" && dictionary[currentLang])
-    ? dictionary[currentLang]["msgChatWelcome"]
-    : "<strong>👋 ELI</strong>: Ask a question or click a tool below to start.";
+  var welcomeText =
+    typeof dictionary !== "undefined" && dictionary[currentLang]
+      ? dictionary[currentLang]["msgChatWelcome"]
+      : "<strong>👋 ELI</strong>: Ask a question or click a tool below to start.";
   welcome.innerHTML = welcomeText;
 
   chatContainer.appendChild(welcome);
@@ -4314,8 +4486,7 @@ function showChatInterface() {
 
   // --- ROW B: INPUT + TOGGLE (Inline) ---
   var inputRow = document.createElement("div");
-  inputRow.style.cssText =
-    "display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f1f3f4;";
+  inputRow.style.cssText = "display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f1f3f4;";
 
   // 1. The Slider (Compact & Inline)
   var sliderContainer = document.createElement("div");
@@ -4341,9 +4512,9 @@ function showChatInterface() {
     "flex:1; height:34px; min-height:34px; max-height:100px; padding:8px 10px; font-size:13px; border-radius:0px; border:1px solid #ced4da; resize:none; line-height:1.4; margin:0; outline:none;";
 
   // Auto-expand logic
-  input.addEventListener('input', function () {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
+  input.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = this.scrollHeight + "px";
   });
 
   inputRow.appendChild(input);
@@ -4386,7 +4557,7 @@ function showChatInterface() {
     input.className = "tool-input auto-expand";
     input.classList.remove("input-mode-draft", "input-mode-rewrite", "input-mode-justify", "input-mode-translate");
     input.placeholder = "Ask a question...";
-    [btnDraft, btnRewrite, btnJustify, btnTranslate].forEach(b => b.classList.remove("active-mode"));
+    [btnDraft, btnRewrite, btnJustify, btnTranslate].forEach((b) => b.classList.remove("active-mode"));
   }
 
   function setMode(btn, modeClass, placeholder, chatMsg) {
@@ -4398,7 +4569,13 @@ function showChatInterface() {
     if (chatMsg) addChatBubble(chatMsg, "ai");
   }
 
-  btnDraft.onclick = () => setMode(btnDraft, "input-mode-draft", "Describe the clause...", "<strong>⚖️ Drafting Mode:</strong> Describe the clause you want me to create below.");
+  btnDraft.onclick = () =>
+    setMode(
+      btnDraft,
+      "input-mode-draft",
+      "Describe the clause...",
+      "<strong>⚖️ Drafting Mode:</strong> Describe the clause you want me to create below.",
+    );
 
   btnRewrite.onclick = () => {
     validateApiAndGetText(true).then((t) => {
@@ -4407,7 +4584,12 @@ function showChatInterface() {
         return;
       }
       if (typeof pendingRewriteText !== "undefined") pendingRewriteText = t;
-      setMode(btnRewrite, "input-mode-rewrite", "How should I rewrite this?", '<strong>🎯 Rewrite Locked:</strong><br><em>"' + t.substring(0, 70) + '..."</em>');
+      setMode(
+        btnRewrite,
+        "input-mode-rewrite",
+        "How should I rewrite this?",
+        '<strong>🎯 Rewrite Locked:</strong><br><em>"' + t.substring(0, 70) + '..."</em>',
+      );
     });
   };
 
@@ -4418,7 +4600,12 @@ function showChatInterface() {
         return;
       }
       if (typeof pendingJustifyText !== "undefined") pendingJustifyText = t;
-      setMode(btnJustify, "input-mode-justify", "Explain your change...", '<strong>🛡️ Defense Locked:</strong><br>Ready to justify: <em>"' + t.substring(0, 70) + '..."</em>');
+      setMode(
+        btnJustify,
+        "input-mode-justify",
+        "Explain your change...",
+        '<strong>🛡️ Defense Locked:</strong><br>Ready to justify: <em>"' + t.substring(0, 70) + '..."</em>',
+      );
     });
   };
 
@@ -4429,7 +4616,12 @@ function showChatInterface() {
         return;
       }
       if (typeof pendingTranslateText !== "undefined") pendingTranslateText = t;
-      setMode(btnTranslate, "input-mode-translate", "Target language?", "<strong>🌐 Translation Locked:</strong> Selection ready. Enter language below.");
+      setMode(
+        btnTranslate,
+        "input-mode-translate",
+        "Target language?",
+        "<strong>🌐 Translation Locked:</strong> Selection ready. Enter language below.",
+      );
     });
   };
 
@@ -4437,7 +4629,7 @@ function showChatInterface() {
     if (!input.value) return;
     handleChatSubmit(input);
     resetTools();
-    input.style.height = '34px';
+    input.style.height = "34px";
   };
 
   sendBtn.onclick = submit;
@@ -4534,7 +4726,7 @@ function runChatQuery(question) {
 
     return {
       fullText: cleanDoc.text,
-      selectionText: hasSelection ? selection.text : null
+      selectionText: hasSelection ? selection.text : null,
     };
   })
     .then(function (data) {
@@ -4556,15 +4748,14 @@ function runChatQuery(question) {
       var recentHistory = chatHistory.slice(-3);
 
       // 3. Call AI
-      return callGemini(
-        API_KEY,
-        PROMPTS.QA(recentHistory, question, finalText, currentChatScope),
-      ).then(function (result) {
-        return {
-          result: result,
-          isHybrid: !!data.selectionText, // Flag for UI
-        };
-      });
+      return callGemini(API_KEY, PROMPTS.QA(recentHistory, question, finalText, currentChatScope)).then(
+        function (result) {
+          return {
+            result: result,
+            isHybrid: !!data.selectionText, // Flag for UI
+          };
+        },
+      );
     })
     // CHANGE 'package' TO 'pkg' (or any other name)
     .then(function (pkg) {
@@ -4579,7 +4770,8 @@ function runChatQuery(question) {
         var answerHtml = data.answer;
 
         // Update the reference here as well:
-        if (pkg.isHybrid) { // <--- Was package.isHybrid
+        if (pkg.isHybrid) {
+          // <--- Was package.isHybrid
           answerHtml += `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed #e0e0e0; font-size:9px; color:#1565c0; text-align:right;">🔍 Analyzed Selection + Document Context</div>`;
         }
 
@@ -4591,8 +4783,7 @@ function runChatQuery(question) {
     .catch(function (e) {
       removeBubble(loaderId);
       console.error(e);
-      if (e.message !== "Request cancelled.")
-        addChatBubble("Error: " + e.message, "ai");
+      if (e.message !== "Request cancelled.") addChatBubble("Error: " + e.message, "ai");
     });
 }
 // ==========================================
@@ -4608,10 +4799,7 @@ function runDraftInChat(topic) {
   // CHANGED: Removed "chat"
   validateApiAndGetText(true)
     .then(function (text) {
-      return callGemini(
-        API_KEY,
-        PROMPTS.DRAFT(topic, text.substring(0, 500000)),
-      );
+      return callGemini(API_KEY, PROMPTS.DRAFT(topic, text.substring(0, 500000)));
     })
     .then(function (jsonString) {
       removeBubble(loaderId);
@@ -4664,7 +4852,9 @@ function addChatBubble(text, type, citations) {
       var chip = document.createElement("a");
       chip.className = "citation-chip";
       chip.innerHTML = "📍 " + quote.substring(0, 15) + "...";
-      chip.onclick = function () { highlightCitation(quote, chip); };
+      chip.onclick = function () {
+        highlightCitation(quote, chip);
+      };
       citeContainer.appendChild(chip);
     });
     bubble.appendChild(citeContainer);
@@ -4760,14 +4950,10 @@ function processGeminiResponse(result, type) {
       // A. Filter by Sensitivity Setting
       if (userSettings.riskSensitivity === "High") {
         // Show ONLY High
-        data = data.filter((item) =>
-          (item.severity || "").toLowerCase().includes("high"),
-        );
+        data = data.filter((item) => (item.severity || "").toLowerCase().includes("high"));
       } else if (userSettings.riskSensitivity === "Medium") {
         // Show High AND Medium (Filter out Low)
-        data = data.filter(
-          (item) => !(item.severity || "").toLowerCase().includes("low"),
-        );
+        data = data.filter((item) => !(item.severity || "").toLowerCase().includes("low"));
       }
 
       // B. Filter by Blacklist (Training)
@@ -4817,8 +5003,6 @@ function renderSummary(data) {
   card.style.background = "transparent";
 
   // 1. HEADER: Premium Banner Style
-  ;
-
   // Design: Deep Navy Gradient + Gold Accent Line + Subtle "Noise" Texture overlay
   var html = `
         <div style="background: #fff; border: 1px solid #cfd8dc; border-radius: 0px; overflow: hidden; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
@@ -4864,8 +5048,7 @@ function renderSummary(data) {
   html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">`;
   for (var key in data.key_terms) {
     var item = data.key_terms[key];
-    var displayValue =
-      typeof item === "object" && item.value ? item.value : item;
+    var displayValue = typeof item === "object" && item.value ? item.value : item;
     var sourceQuote = typeof item === "object" && item.quote ? item.quote : "";
     var cleanKey = key.replace(/_/g, " ");
     // --- CUSTOM FIX: "vs." -> "AND" ---
@@ -4937,8 +5120,7 @@ function renderSummary(data) {
     // [Search for "data.red_flags.forEach" inside renderSummary]
     data.red_flags.forEach(function (item) {
       var title = typeof item === "object" && item.risk ? item.risk : item;
-      var detail =
-        typeof item === "object" && item.explanation ? item.explanation : "";
+      var detail = typeof item === "object" && item.explanation ? item.explanation : "";
       var quote = typeof item === "object" && item.quote ? item.quote : "";
 
       var sourceBtn = "";
@@ -4946,10 +5128,7 @@ function renderSummary(data) {
         // Safe Encoding for HTML Attributes
         var safeQuote = quote.replace(/"/g, "&quot;");
         var safeTitle = title.replace(/"/g, "&quot;").replace(/'/g, "\\'");
-        var safeDetail = detail
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "\\'")
-          .replace(/\n/g, " ");
+        var safeDetail = detail.replace(/"/g, "&quot;").replace(/'/g, "\\'").replace(/\n/g, " ");
 
         // --- FIX IS HERE: Added ', true' as the 5th argument 👇 ---
         // This forces the highlighter to grab the FULL paragraph, not just the search snippet.
@@ -4981,22 +5160,11 @@ function renderSummary(data) {
 
     // [Search for "data.navigation_markers.forEach" inside renderSummary around line 1802]
     data.navigation_markers.forEach(function (nav) {
-      if (
-        !nav.quote ||
-        nav.quote.length < 3 ||
-        nav.quote.toLowerCase().includes("not found")
-      )
-        return;
+      if (!nav.quote || nav.quote.length < 3 || nav.quote.toLowerCase().includes("not found")) return;
 
       // FIX: Escape single quotes (') to prevent SyntaxError in onclick
-      var safeQuote = nav.quote
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'")
-        .replace(/"/g, "&quot;");
-      var safeLabel = nav.label
-        .replace(/\\/g, "\\\\")
-        .replace(/'/g, "\\'")
-        .replace(/"/g, "&quot;");
+      var safeQuote = nav.quote.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      var safeLabel = nav.label.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
 
       html += `
                 <span onclick="locateSummaryItem(this, '${safeQuote}', '${safeLabel}')" 
@@ -5046,7 +5214,10 @@ function renderSummary(data) {
       this.style.transform = "translateY(-1px)";
       this.style.boxShadow = "0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 #ffffff";
       var ico = this.querySelector("span");
-      if (ico) { ico.style.filter = "none"; ico.style.opacity = "1"; }
+      if (ico) {
+        ico.style.filter = "none";
+        ico.style.opacity = "1";
+      }
     };
 
     btn.onmouseout = function () {
@@ -5056,7 +5227,10 @@ function renderSummary(data) {
       this.style.transform = "translateY(0)";
       this.style.boxShadow = "inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.08)";
       var ico = this.querySelector("span");
-      if (ico) { ico.style.filter = "grayscale(100%)"; ico.style.opacity = "0.8"; }
+      if (ico) {
+        ico.style.filter = "grayscale(100%)";
+        ico.style.opacity = "0.8";
+      }
     };
   }
 
@@ -5099,9 +5273,7 @@ function renderSummary(data) {
   emailContainer.style.cssText =
     "margin-top:10px; border:1px solid #e0e0e0; border-radius:6px; background:#fff; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.05);";
 
-  var emailContent =
-    data.email_draft ||
-    "⚠️ The AI could not generate the email draft this time.";
+  var emailContent = data.email_draft || "⚠️ The AI could not generate the email draft this time.";
   emailContainer.innerHTML = `
         <div style="background:#f5f5f5; padding:8px 12px; font-size:11px; font-weight:700; color:#607d8b; border-bottom:1px solid #eee;">
              EMAIL PREVIEW
@@ -5194,8 +5366,9 @@ function renderCards(items, type, customBackAction) {
     var btnBack = document.createElement("button");
     btnBack.className = "btn-action";
     // Smart Label: Check if we are in Wizard mode
-    btnBack.innerText = (window.eliWizardMode) ? "💾 Next: Save & Send ➔" : "⬅ Done / Back to Hub";
-    btnBack.style.cssText = "width:100%; margin-bottom:15px; background:#fff3e0; color:#e65100; border:1px solid #ffe0b2; font-weight:bold;";
+    btnBack.innerText = window.eliWizardMode ? "💾 Next: Save & Send ➔" : "⬅ Done / Back to Hub";
+    btnBack.style.cssText =
+      "width:100%; margin-bottom:15px; background:#fff3e0; color:#e65100; border:1px solid #ffe0b2; font-weight:bold;";
     btnBack.onclick = customBackAction;
     out.appendChild(btnBack);
   }
@@ -5218,9 +5391,16 @@ function renderCards(items, type, customBackAction) {
 
     if (type === "legal" && item.severity) {
       var sev = item.severity.toLowerCase();
-      if (sev === "high") { tabColor = "#c62828"; tabBg = "#ffebee"; }
-      else if (sev === "medium") { tabColor = "#e65100"; tabBg = "#fff3e0"; }
-      else { tabColor = "#2e7d32"; tabBg = "#e8f5e9"; }
+      if (sev === "high") {
+        tabColor = "#c62828";
+        tabBg = "#ffebee";
+      } else if (sev === "medium") {
+        tabColor = "#e65100";
+        tabBg = "#fff3e0";
+      } else {
+        tabColor = "#2e7d32";
+        tabBg = "#e8f5e9";
+      }
     }
 
     // --- CARD CONTAINER ---
@@ -5325,7 +5505,7 @@ function renderCards(items, type, customBackAction) {
     card.innerHTML = html;
 
     // --- BIND THE NEW AI DRAFTER BUTTON (LEGAL ONLY) ---
-    if (type === 'legal') {
+    if (type === "legal") {
       setTimeout(function () {
         var draftBtn = card.querySelector(`#btnAiDraft_${index}`);
         if (draftBtn) {
@@ -5393,16 +5573,19 @@ function renderCards(items, type, customBackAction) {
       // --- SCRIPT 40/31 LIST LOGIC ---
       btnApply.onclick = function () {
         var issueText = (item.reason || "") + " " + (item.correction || "");
-        var isNumbering = /numbering|sequence|duplicate section|list item/i.test(issueText) ||
+        var isNumbering =
+          /numbering|sequence|duplicate section|list item/i.test(issueText) ||
           /^\d+(\.|\))$/.test(item.correction.trim());
 
         if (isNumbering) {
           var overlay = document.createElement("div");
-          overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+          overlay.style.cssText =
+            "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
           var dialog = document.createElement("div");
           dialog.className = "tool-box slide-in";
-          dialog.style.cssText = "background:white; width:280px; border-left:5px solid #f57f17; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:4px;";
+          dialog.style.cssText =
+            "background:white; width:280px; border-left:5px solid #f57f17; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:4px;";
           dialog.innerHTML = `
                     <div style="font-size:24px; margin-bottom:10px;">🔢</div>
                     <div style="font-weight:700; color:#c62828; margin-bottom:10px; font-size:14px;">Manual Fix Required</div>
@@ -5442,7 +5625,10 @@ function renderCards(items, type, customBackAction) {
         card.style.transition = "all 0.4s ease";
         card.style.transform = "translateX(100%)";
         card.style.opacity = "0";
-        setTimeout(function () { card.remove(); updateProgressBar(); }, 400);
+        setTimeout(function () {
+          card.remove();
+          updateProgressBar();
+        }, 400);
         showToast("Suggestion Ignored");
       };
       buttonRow.appendChild(btnIgnore);
@@ -5453,9 +5639,9 @@ function renderCards(items, type, customBackAction) {
         var box = document.getElementById("suggest-" + index);
         box.classList.toggle("hidden");
         // Update text based on visibility
-        this.innerHTML = box.classList.contains("hidden") ?
-          `<span style="font-size:12px; color:#1565c0;">💡</span> <span style="color:#1565c0;">Suggest Fix</span>` :
-          `<span style="font-size:12px; color:#1565c0;">▲</span> <span style="color:#1565c0;">Hide Fix</span>`;
+        this.innerHTML = box.classList.contains("hidden")
+          ? `<span style="font-size:12px; color:#1565c0;">💡</span> <span style="color:#1565c0;">Suggest Fix</span>`
+          : `<span style="font-size:12px; color:#1565c0;">▲</span> <span style="color:#1565c0;">Hide Fix</span>`;
       };
       buttonRow.appendChild(btnSuggest);
 
@@ -5488,7 +5674,8 @@ function renderCards(items, type, customBackAction) {
     // --- FOOTER ROW (Error Only) ---
     if (type === "error") {
       var footerRow = document.createElement("div");
-      footerRow.style.cssText = "border-top: 1px dashed #eee; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; overflow: hidden;";
+      footerRow.style.cssText =
+        "border-top: 1px dashed #eee; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; overflow: hidden;";
 
       var checkLabel = document.createElement("label");
       checkLabel.style.fontSize = "11px";
@@ -5502,11 +5689,14 @@ function renderCards(items, type, customBackAction) {
 
       var bugBtn = document.createElement("div");
       bugBtn.innerHTML = "Flag Incorrect";
-      bugBtn.style.cssText = "font-size: 10px; color: #b0bec5; cursor: pointer; text-decoration: underline; margin-left: 10px; flex-shrink: 0;";
+      bugBtn.style.cssText =
+        "font-size: 10px; color: #b0bec5; cursor: pointer; text-decoration: underline; margin-left: 10px; flex-shrink: 0;";
       bugBtn.onclick = function () {
         var parent = footerRow.parentElement;
-        var existingFb = parent.querySelector('.feedback-container');
-        if (existingFb) { existingFb.remove(); } else {
+        var existingFb = parent.querySelector(".feedback-container");
+        if (existingFb) {
+          existingFb.remove();
+        } else {
           var fbContainer = document.createElement("div");
           fbContainer.className = "feedback-container slide-in";
           fbContainer.style.cssText = "display: flex; gap: 5px; width: 100%; margin-top: 8px; box-sizing: border-box;";
@@ -5537,7 +5727,7 @@ function renderCards(items, type, customBackAction) {
       negoRow.style.borderTop = "1px dashed #eee";
       negoRow.innerHTML = `
                 <label style="display:flex; align-items:center; cursor:pointer; font-size:11px; font-weight:600; color:#1565c0;">
-                    <input type="checkbox" class="negotiation-check" data-clause="${item.quote.replace(/"/g, '&quot;')}" data-issue="${item.issue.replace(/"/g, '&quot;')}" style="margin-right:6px;"> Include in Negotiation Email
+                    <input type="checkbox" class="negotiation-check" data-clause="${item.quote.replace(/"/g, "&quot;")}" data-issue="${item.issue.replace(/"/g, "&quot;")}" style="margin-right:6px;"> Include in Negotiation Email
                 </label>
             `;
       actionsDiv.appendChild(negoRow);
@@ -5558,13 +5748,14 @@ function renderCards(items, type, customBackAction) {
     btnEmail.style.width = "100%";
     btnEmail.innerHTML = "📧 Draft Email Summary";
     btnEmail.style.borderRadius = "0px";
-    btnEmail.onclick = function (e) { generateEmailDraft(e); };
+    btnEmail.onclick = function (e) {
+      generateEmailDraft(e);
+    };
     emailSection.appendChild(btnEmail);
     out.appendChild(emailSection);
     // ... inside renderCards, at the bottom ...
 
     // ... inside renderCards, near the bottom ...
-
   } else if (type === "legal") {
     var negoSection = document.createElement("div");
     negoSection.style.marginTop = "30px";
@@ -5603,7 +5794,9 @@ function renderCards(items, type, customBackAction) {
       this.style.borderColor = "#b0bec5";
     };
 
-    btnNego.onclick = function () { generateNegotiationEmail(); };
+    btnNego.onclick = function () {
+      generateNegotiationEmail();
+    };
 
     negoSection.appendChild(btnNego);
     out.appendChild(negoSection);
@@ -5620,18 +5813,12 @@ function renderCards(items, type, customBackAction) {
 function getFeedbackInstructions() {
   var feedbackInstructions = "";
   if (userFeedback.length > 0) {
-    feedbackInstructions =
-      "\nIMPORTANT - PREVIOUS USER FEEDBACK (DO NOT REPORT THESE):\n";
+    feedbackInstructions = "\nIMPORTANT - PREVIOUS USER FEEDBACK (DO NOT REPORT THESE):\n";
     userFeedback.forEach(function (item) {
       feedbackInstructions +=
-        '- Ignore text similar to: "' +
-        item.original +
-        "\". User's Reason: " +
-        item.reason +
-        "\n";
+        '- Ignore text similar to: "' + item.original + "\". User's Reason: " + item.reason + "\n";
     });
-    feedbackInstructions +=
-      "INSTRUCTION: Strictly follow the user's feedback above.\n";
+    feedbackInstructions += "INSTRUCTION: Strictly follow the user's feedback above.\n";
   }
   return feedbackInstructions;
 }
@@ -5655,7 +5842,8 @@ function generateEmailDraft(event) {
     return;
   }
 
-  var emailBody = "Dear [Third Party],\n\nAttached please find [Name of Document] between the parties. I have made the following changes:\n\n";
+  var emailBody =
+    "Dear [Third Party],\n\nAttached please find [Name of Document] between the parties. I have made the following changes:\n\n";
   checkedBoxes.forEach(function (box) {
     emailBody += "• " + box.dataset.fix + '\n  (Replaced: "' + box.dataset.original + '")\n\n';
   });
@@ -5750,7 +5938,9 @@ function locateText(textToFind, btnElement, grabParagraph) {
     var foundRange = null;
     try {
       foundRange = await findSmartMatch(context, cleanSearch);
-    } catch (e) { console.log("Smart match failed"); }
+    } catch (e) {
+      console.log("Smart match failed");
+    }
 
     if (!foundRange) {
       // Footer Fallback
@@ -5769,7 +5959,7 @@ function locateText(textToFind, btnElement, grabParagraph) {
           footerResults.load("items");
           await context.sync();
           if (footerResults.items.length > 0) foundRange = footerResults.items[0];
-        } catch (e) { }
+        } catch (e) {}
       }
     }
 
@@ -5866,7 +6056,7 @@ async function findSmartMatch(context, textToFind) {
         hRes.load("items");
         await context.sync();
         if (hRes.items.length > 0) return hRes.items[0];
-      } catch (e) { }
+      } catch (e) {}
     }
   }
 
@@ -5893,7 +6083,7 @@ async function findSmartMatch(context, textToFind) {
   }
 
   return null;
-}// [Search for "function applyFix" around line 763]
+} // [Search for "function applyFix" around line 763]
 // ==========================================
 // END: findSmartMatch
 // ==========================================
@@ -5924,9 +6114,7 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
   // ==========================================
 
   var cleanOriginal = cleanString(originalText);
-  var cleanCorrection = correctionText.includes("<")
-    ? correctionText
-    : cleanString(correctionText);
+  var cleanCorrection = correctionText.includes("<") ? correctionText : cleanString(correctionText);
 
   return Word.run(function (context) {
     return findSmartMatch(context, cleanOriginal).then(function (range) {
@@ -5946,10 +6134,7 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
             var insertedRange;
 
             // 2. INSERT NEW CONTENT
-            if (
-              cleanCorrection.includes("<") &&
-              cleanCorrection.includes(">")
-            ) {
+            if (cleanCorrection.includes("<") && cleanCorrection.includes(">")) {
               insertedRange = para.insertHtml(cleanCorrection, "Replace");
             } else {
               insertedRange = para.insertText(cleanCorrection, "Replace");
@@ -5966,12 +6151,8 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
             btnElement.disabled = true;
             btnElement.classList.add("btn-disabled");
 
-            var logDetail =
-              cleanCorrection.replace(/<[^>]*>/g, "").substring(0, 50) + "...";
-            addAuditLog(
-              "Playbook Fallback Applied",
-              "Replaced clause with: '" + logDetail + "'",
-            );
+            var logDetail = cleanCorrection.replace(/<[^>]*>/g, "").substring(0, 50) + "...";
+            addAuditLog("Playbook Fallback Applied", "Replaced clause with: '" + logDetail + "'");
 
             return context.sync().then(function () {
               return true;
@@ -5981,11 +6162,8 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
         // ---------------------------------------------
         // ---------------------------------------------
 
-        var hasHtml =
-          cleanCorrection.includes("<") && cleanCorrection.includes(">");
-        var diff = !hasHtml
-          ? getStringDiff(cleanOriginal, cleanCorrection)
-          : null;
+        var hasHtml = cleanCorrection.includes("<") && cleanCorrection.includes(">");
+        var diff = !hasHtml ? getStringDiff(cleanOriginal, cleanCorrection) : null;
         var useSpecificSearch = diff && diff.badPart.length < 250;
         var specificSearch = null;
 
@@ -6000,15 +6178,12 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
 
         return context.sync().then(function () {
           try {
-            if (
-              typeof userSettings !== "undefined" &&
-              userSettings.disableTrackChanges
-            ) {
+            if (typeof userSettings !== "undefined" && userSettings.disableTrackChanges) {
               context.document.changeTrackingMode = "Off";
             } else {
               context.document.changeTrackingMode = "TrackAll";
             }
-          } catch (e) { }
+          } catch (e) {}
 
           var targetRange = null;
           if (useSpecificSearch && specificSearch.items.length === 1) {
@@ -6026,16 +6201,14 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
           if (targetRange) {
             try {
               targetRange.select();
-            } catch (e) { }
+            } catch (e) {}
           }
 
           btnElement.innerText = "Fixed ✓";
           btnElement.disabled = true;
           btnElement.classList.add("btn-disabled");
 
-          var logDetail = cleanCorrection
-            .replace(/<[^>]*>/g, "")
-            .substring(0, 60);
+          var logDetail = cleanCorrection.replace(/<[^>]*>/g, "").substring(0, 60);
           if (cleanCorrection.length > 60) logDetail += "...";
           addAuditLog("Applied Fix", "Updated text: '" + logDetail + "'");
 
@@ -6052,12 +6225,14 @@ function applyFix(originalText, correctionText, btnElement, replaceFullPara) {
 
         // 2. CREATE OVERLAY (Dimmed Background)
         var overlay = document.createElement("div");
-        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+        overlay.style.cssText =
+          "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
         // 3. CREATE DIALOG BOX
         var dialog = document.createElement("div");
         dialog.className = "tool-box slide-in";
-        dialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+        dialog.style.cssText =
+          "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
         dialog.innerHTML = `
         <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
@@ -6105,22 +6280,14 @@ function getStringDiff(oldStr, newStr) {
 
   // 1. Find common Prefix
   var start = 0;
-  while (
-    start < oldStr.length &&
-    start < newStr.length &&
-    oldStr[start] === newStr[start]
-  ) {
+  while (start < oldStr.length && start < newStr.length && oldStr[start] === newStr[start]) {
     start++;
   }
 
   // 2. Find common Suffix
   var endOld = oldStr.length - 1;
   var endNew = newStr.length - 1;
-  while (
-    endOld >= start &&
-    endNew >= start &&
-    oldStr[endOld] === newStr[endNew]
-  ) {
+  while (endOld >= start && endNew >= start && oldStr[endOld] === newStr[endNew]) {
     endOld--;
     endNew--;
   }
@@ -6187,8 +6354,7 @@ function getStringDiff(oldStr, newStr) {
   var badPart = oldStr.substring(start, endOld + 1);
   var goodPart = newStr.substring(start, endNew + 1);
 
-  if (!badPart || badPart.trim() === "")
-    return { badPart: oldStr, goodPart: newStr };
+  if (!badPart || badPart.trim() === "") return { badPart: oldStr, goodPart: newStr };
 
   return { badPart: badPart, goodPart: goodPart };
 } // --- NEW: HTML PARSER (Removes Track Changes, Footers, & COMMENTS) ---
@@ -6243,13 +6409,8 @@ function getCleanTextAndContext(html) {
   // 5. Build Context (Optional - used for AI hints)
   var contextMsg = "";
   if (deletedPhrases.length > 0) {
-    var unique = deletedPhrases
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .slice(0, 5);
-    contextMsg =
-      "NOTE: The user recently deleted these phrases: [" +
-      unique.join(", ") +
-      "]";
+    var unique = deletedPhrases.filter((v, i, a) => a.indexOf(v) === i).slice(0, 5);
+    contextMsg = "NOTE: The user recently deleted these phrases: [" + unique.join(", ") + "]";
   }
 
   return { text: cleanText, context: contextMsg };
@@ -6286,7 +6447,7 @@ function renderRewriteBubble(data, originalText) {
 
   // Apply Platinum Styles dynamically
   var btns = bubble.querySelectorAll(".btn-platinum-action");
-  btns.forEach(b => {
+  btns.forEach((b) => {
     b.style.cssText = `
           width: 100%;
           background: linear-gradient(to bottom, #ffffff 0%, #eceff1 100%);
@@ -6302,13 +6463,20 @@ function renderRewriteBubble(data, originalText) {
           cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 6px;
       `;
-    b.onmouseover = function () { this.style.background = "#e3f2fd"; };
-    b.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)"; };
+    b.onmouseover = function () {
+      this.style.background = "#e3f2fd";
+    };
+    b.onmouseout = function () {
+      this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)";
+    };
   });
 
   // --- JUMP FIX ---
   var scrollParent = document.getElementById("output");
-  if (scrollParent) setTimeout(() => { scrollParent.scrollTop = scrollParent.scrollHeight; }, 10);
+  if (scrollParent)
+    setTimeout(() => {
+      scrollParent.scrollTop = scrollParent.scrollHeight;
+    }, 10);
 
   // 1. APPLY REDLINE BUTTON
   var btnApply = bubble.querySelector(".btn-apply");
@@ -6318,7 +6486,9 @@ function renderRewriteBubble(data, originalText) {
     btnApply.innerText = "Applying...";
     Word.run(function (context) {
       var selection = context.document.getSelection();
-      try { context.document.changeTrackingMode = "TrackAll"; } catch (e) { }
+      try {
+        context.document.changeTrackingMode = "TrackAll";
+      } catch (e) {}
       var insertedRange = selection.insertText(data.rewrite, "Replace");
       insertedRange.font.bold = false;
       insertedRange.font.italic = false;
@@ -6331,7 +6501,10 @@ function renderRewriteBubble(data, originalText) {
         btnComment.classList.remove("hidden"); // Reveal comment button
         showToast("✅ Redline applied");
       })
-      .catch(function (e) { console.error(e); btnApply.innerText = "Error"; });
+      .catch(function (e) {
+        console.error(e);
+        btnApply.innerText = "Error";
+      });
   };
 
   // 2. ATTACH RATIONALE BUTTON
@@ -6341,12 +6514,11 @@ function renderRewriteBubble(data, originalText) {
       var selection = context.document.getSelection();
       selection.insertComment(data.summary);
       return context.sync();
-    })
-      .then(() => {
-        btnComment.innerHTML = "✅ Attached";
-        btnComment.disabled = true;
-        showToast("✅ Rationale Attached");
-      });
+    }).then(() => {
+      btnComment.innerHTML = "✅ Attached";
+      btnComment.disabled = true;
+      showToast("✅ Rationale Attached");
+    });
   };
 }
 // ==========================================
@@ -6415,16 +6587,17 @@ function tryParseGeminiJSON(jsonString) {
       if (fixed.match(/^\[\w+\]/)) throw new Error("Plain text list detected");
       return JSON.parse(fixed);
     } catch (e3) {
-
       // 5. Emergency Fallback (Your existing code)
       if (jsonString.includes("1.") || jsonString.includes("- ")) {
         return {
           summary: "AI returned plain text analysis.",
-          changes: [{
-            clause: "General",
-            change: jsonString.substring(0, 500),
-            impact: "Review Manually"
-          }]
+          changes: [
+            {
+              clause: "General",
+              change: jsonString.substring(0, 500),
+              impact: "Review Manually",
+            },
+          ],
         };
       }
 
@@ -6456,19 +6629,21 @@ function callGemini(apiKey, input, modelOverride) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: contentsPayload, // Send full structure
-      model: targetModel         // Send selected model
+      model: targetModel, // Send selected model
     }),
     signal: signal,
   })
     .then(function (res) {
       if (res.status === 503 || res.status === 429) throw new Error("OVERLOADED");
-      if (!res.ok) return res.text().then(t => { throw new Error("Backend Error: " + t) });
+      if (!res.ok)
+        return res.text().then((t) => {
+          throw new Error("Backend Error: " + t);
+        });
       return res.json();
     })
     .then(function (data) {
       currentController = null;
-      if (data.candidates && data.candidates.length > 0)
-        return data.candidates[0].content.parts[0].text;
+      if (data.candidates && data.candidates.length > 0) return data.candidates[0].content.parts[0].text;
       return "No response from AI.";
     })
     .catch(function (err) {
@@ -6555,7 +6730,7 @@ function setLoading(isLoading, type) {
     // --- LOCK INTERFACE (Invisible) ---
     buttonsToLock.forEach(function (btn) {
       btn.style.pointerEvents = "none"; // Physically blocks clicks
-      btn.style.cursor = "wait";        // Changes mouse cursor to hourglass/spinner
+      btn.style.cursor = "wait"; // Changes mouse cursor to hourglass/spinner
     });
 
     // Start Messages
@@ -6571,12 +6746,11 @@ function setLoading(isLoading, type) {
 
     if (loader) loader.classList.remove("hidden");
     if (out) out.classList.add("hidden");
-
   } else {
     // --- UNLOCK INTERFACE ---
     buttonsToLock.forEach(function (btn) {
       btn.style.pointerEvents = "auto"; // Re-enable clicks
-      btn.style.cursor = "pointer";     // Restore hand cursor
+      btn.style.cursor = "pointer"; // Restore hand cursor
     });
 
     if (loader) loader.classList.add("hidden");
@@ -6648,7 +6822,8 @@ function handleError(error) {
 
   // 6. HANDLER: Script Error (CORS / External)
   if (msg.toLowerCase().includes("script error")) {
-    msg = "External Script Error. (This often happens if a library like Mammoth.js failed to load or due to browser security settings).";
+    msg =
+      "External Script Error. (This often happens if a library like Mammoth.js failed to load or due to browser security settings).";
   }
 
   // 7. SHOW OUTPUT
@@ -6676,19 +6851,15 @@ function renderOverloadCard() {
   card.style.padding = "15px";
 
   var html = "";
-  html +=
-    "<div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>";
+  html += "<div style='display:flex; align-items:center; gap:12px; margin-bottom:10px;'>";
   html += "  <span style='font-size:24px;'>🐢</span>";
   html += "  <div>";
-  html +=
-    "    <strong style='color:#e65100; font-size:16px; display:block;'>Gemini is Busy</strong>";
-  html +=
-    "    <span style='color:#bf360c; font-size:12px;'>Google's servers are overloaded.</span>";
+  html += "    <strong style='color:#e65100; font-size:16px; display:block;'>Gemini is Busy</strong>";
+  html += "    <span style='color:#bf360c; font-size:12px;'>Google's servers are overloaded.</span>";
   html += "  </div>";
   html += "</div>";
   html += "<div style='color:#5d4037; font-size:13px; line-height:1.5;'>";
-  html +=
-    "  Don't worry, your document is fine. The AI just needs a moment to catch its breath.<br><br>";
+  html += "  Don't worry, your document is fine. The AI just needs a moment to catch its breath.<br><br>";
   html += "  <strong>Please wait 30 seconds and try again.</strong>";
   html += "</div>";
 
@@ -6706,7 +6877,13 @@ function showConfigModal(type) {
   out.innerHTML = "";
   out.classList.remove("hidden");
 
-  var titleMap = { error: "Error Check", legal: "Legal Risk", email: "Email Templates", compare: "Comparison Settings", filename: "File Naming" };
+  var titleMap = {
+    error: "Error Check",
+    legal: "Legal Risk",
+    email: "Email Templates",
+    compare: "Comparison Settings",
+    filename: "File Naming",
+  };
   var title = titleMap[type] || "Settings";
 
   var card = document.createElement("div");
@@ -6789,7 +6966,7 @@ function showConfigModal(type) {
   else if (type === "filename") {
     var defaults = {
       colgate: "[Ref] - CP-[Party] -- [Type] (DRAFT [Date])",
-      hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])"
+      hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])",
     };
     var current = userSettings.fileNamePatterns || defaults;
 
@@ -6911,12 +7088,14 @@ function showConfigModal(type) {
       function renderTmplList() {
         listDiv.innerHTML = "";
         if (savedTemplates.length === 0) {
-          listDiv.innerHTML = "<div style='padding:10px; font-size:11px; color:#999; text-align:center;'>No templates saved.</div>";
+          listDiv.innerHTML =
+            "<div style='padding:10px; font-size:11px; color:#999; text-align:center;'>No templates saved.</div>";
           return;
         }
         savedTemplates.forEach((t, idx) => {
           var row = document.createElement("div");
-          row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #eee; font-size:11px;";
+          row.style.cssText =
+            "display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-bottom:1px solid #eee; font-size:11px;";
           row.innerHTML = `
                     <span style="font-weight:600; color:#37474f;">${t.name}</span>
                     <span class="del-tmpl" data-idx="${idx}" style="cursor:pointer; color:#c62828; font-weight:bold;">🗑️</span>
@@ -6924,7 +7103,7 @@ function showConfigModal(type) {
           listDiv.appendChild(row);
         });
         // Bind Deletes
-        document.querySelectorAll(".del-tmpl").forEach(btn => {
+        document.querySelectorAll(".del-tmpl").forEach((btn) => {
           btn.onclick = function () {
             savedTemplates.splice(this.dataset.idx, 1);
             saveFeatureData(STORE_TEMPLATES, savedTemplates);
@@ -6939,8 +7118,14 @@ function showConfigModal(type) {
         var fileInp = document.getElementById("newTmplFile");
         var status = document.getElementById("tmplUploadStatus");
 
-        if (!name) { status.innerText = "⚠️ Enter a name."; return; }
-        if (!fileInp.files[0]) { status.innerText = "⚠️ Select a file."; return; }
+        if (!name) {
+          status.innerText = "⚠️ Enter a name.";
+          return;
+        }
+        if (!fileInp.files[0]) {
+          status.innerText = "⚠️ Select a file.";
+          return;
+        }
 
         status.innerText = "⏳ Reading...";
         handleFileSelect(fileInp.files[0], function (text) {
@@ -6976,12 +7161,12 @@ function showConfigModal(type) {
             var skippedCount = 0;
 
             json.forEach(function (item) {
-              if (item && typeof item === 'object' && item.name && (item.content || item.text)) {
+              if (item && typeof item === "object" && item.name && (item.content || item.text)) {
                 validItems.push({
                   name: String(item.name).trim(),
                   content: String(item.content || item.text || ""),
                   type: String(item.type || "General"),
-                  library: String(item.library || "Imported")
+                  library: String(item.library || "Imported"),
                 });
               } else {
                 skippedCount++;
@@ -6998,7 +7183,6 @@ function showConfigModal(type) {
             showToast("✅ Imported " + validItems.length + " templates.");
             btn.innerText = "Import";
             fileInp.value = "";
-
           } catch (err) {
             console.error("Bulk Import Error:", err);
             showToast("❌ " + err.message);
@@ -7007,10 +7191,8 @@ function showConfigModal(type) {
         };
         reader.readAsText(fileInp.files[0]);
       };
-
     }, 100);
-  }
-  else {
+  } else {
     html += `
         <div style="margin-bottom:15px;">
             <label class="tool-label">Risk Threshold (Sensitivity)</label>
@@ -7047,10 +7229,10 @@ function showConfigModal(type) {
   contentDiv.innerHTML = html;
   card.appendChild(contentDiv);
 
-
   // --- SAVE BUTTON (PLATINUM PRIMARY) ---
   var footerDiv = document.createElement("div");
-  footerDiv.style.cssText = "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
+  footerDiv.style.cssText =
+    "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
 
   var btnCancel = document.createElement("button");
   btnCancel.className = "btn-platinum-config"; // Standard styling
@@ -7072,7 +7254,9 @@ function showConfigModal(type) {
   // --- BIND EVENTS ---
   var btnResetPrompt = document.getElementById("btnResetPrompt");
   if (btnResetPrompt) {
-    btnResetPrompt.onclick = function () { document.getElementById("txtCustomPrompt").value = DEFAULT_PERSONAS[type]; };
+    btnResetPrompt.onclick = function () {
+      document.getElementById("txtCustomPrompt").value = DEFAULT_PERSONAS[type];
+    };
   }
 
   var btnResetTrain = document.getElementById("btnResetTraining");
@@ -7090,13 +7274,19 @@ function showConfigModal(type) {
       userSettings.emailTemplates = {
         myName: document.getElementById("txtMyName").value.trim(),
         useFullName: document.getElementById("chkUseFullName").checked,
-        thirdParty: { subject: document.getElementById("txtSubjTP").value, body: document.getElementById("txtBodyTP").value },
-        requester: { subject: document.getElementById("txtSubjReq").value, body: document.getElementById("txtBodyReq").value }
+        thirdParty: {
+          subject: document.getElementById("txtSubjTP").value,
+          body: document.getElementById("txtBodyTP").value,
+        },
+        requester: {
+          subject: document.getElementById("txtSubjReq").value,
+          body: document.getElementById("txtBodyReq").value,
+        },
       };
     } else if (type === "filename") {
       userSettings.fileNamePatterns = {
         colgate: document.getElementById("patColgate").value.trim(),
-        hills: document.getElementById("patHills").value.trim()
+        hills: document.getElementById("patHills").value.trim(),
       };
       // userSettings.highlightFill = document.getElementById("chkHighlightFill").checked; // Hidden in Main Settings
     } else if (type === "error") {
@@ -7123,7 +7313,9 @@ function showConfigModal(type) {
     btnSave.innerText = "SAVED!";
     btnSave.style.background = "#2e7d32";
     btnSave.style.borderColor = "#1b5e20";
-    setTimeout(() => { showHome(); }, 600);
+    setTimeout(() => {
+      showHome();
+    }, 600);
   };
 }
 // ==========================================
@@ -7215,10 +7407,7 @@ function validateApiAndGetText(isInline, loadingType) {
   if (!isInline && loadingType) setLoading(true, loadingType);
   if (!API_KEY || API_KEY.includes("PASTE_YOUR_KEY")) {
     setLoading(false);
-    showOutput(
-      "⚠️ Error: Please put your Google Gemini API Key at the top of the script.",
-      true,
-    );
+    showOutput("⚠️ Error: Please put your Google Gemini API Key at the top of the script.", true);
     return Promise.reject("Invalid API Key");
   }
 
@@ -7292,15 +7481,23 @@ function renderMainFooter() {
   // Check Persistence
   var savedInfo = null;
   try {
-    if (typeof Office !== 'undefined' && Office && Office.context && Office.context.document && Office.context.document.settings) {
+    if (
+      typeof Office !== "undefined" &&
+      Office &&
+      Office.context &&
+      Office.context.document &&
+      Office.context.document.settings
+    ) {
       var raw = Office.context.document.settings.get("AgreementDataDetails");
       if (raw) savedInfo = raw;
     }
-  } catch (e) { console.log("Data Load Error", e); }
+  } catch (e) {
+    console.log("Data Load Error", e);
+  }
 
   var isLoaded = !!savedInfo;
   // CHANGE: Updated Text
-  var rawLabel = isLoaded ? savedInfo.sourceName : (mode === 'local' ? "DATA" : "Load " + sourceId);
+  var rawLabel = isLoaded ? savedInfo.sourceName : mode === "local" ? "DATA" : "Load " + sourceId;
 
   // 2. FIX: Apply truncation logic on reload
   var displayLabel = rawLabel;
@@ -7311,9 +7508,9 @@ function renderMainFooter() {
   if (savedInfo && !AGREEMENT_DATA) {
     mode = savedInfo.type || mode;
     console.log("Re-hydrating Agreement Data from DB...");
-    if (typeof PROMPTS !== 'undefined' && PROMPTS.loadDocFromDB) {
+    if (typeof PROMPTS !== "undefined" && PROMPTS.loadDocFromDB) {
       // ✅ FIX: Use Global ID
-      var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+      var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
       PROMPTS.loadDocFromDB(uniqueKey).then(function (doc) {
         if (doc) {
           AGREEMENT_DATA = doc;
@@ -7329,30 +7526,30 @@ function renderMainFooter() {
 
   var html = `
         <div style="display:flex; align-items:center; gap:0px; min-width:120px;">
-           <div id="footerDataToggle" title="Switch Source: Local vs Data Source" style="display:${isLoaded ? 'none' : 'flex'}; border:1px solid #ced4da; border-radius:3px; background:#fff; cursor:pointer;" onclick="window.toggleFooterDataSource()">
-               <div id="togBtnLocal" style="padding:1px 5px; font-size:8px; font-weight:700; color:${mode === 'local' ? '#fff' : '#78909c'}; background:${mode === 'local' ? '#546e7a' : 'transparent'};">FILE</div>
-               <div id="togBtnOnit"  style="padding:1px 5px; font-size:8px; font-weight:700; color:${mode === 'onit' ? '#fff' : '#78909c'}; background:${mode === 'onit' ? '#546e7a' : 'transparent'};">SRC</div>
+           <div id="footerDataToggle" title="Switch Source: Local vs Data Source" style="display:${isLoaded ? "none" : "flex"}; border:1px solid #ced4da; border-radius:3px; background:#fff; cursor:pointer;" onclick="window.toggleFooterDataSource()">
+               <div id="togBtnLocal" style="padding:1px 5px; font-size:8px; font-weight:700; color:${mode === "local" ? "#fff" : "#78909c"}; background:${mode === "local" ? "#546e7a" : "transparent"};">FILE</div>
+               <div id="togBtnOnit"  style="padding:1px 5px; font-size:8px; font-weight:700; color:${mode === "onit" ? "#fff" : "#78909c"}; background:${mode === "onit" ? "#546e7a" : "transparent"};">SRC</div>
            </div>
            
-           <div class="footer-divider-left" style="display:${isLoaded ? 'none' : 'block'}; width:1px; height:14px; background:#cfd8dc; margin:0 8px;"></div>
+           <div class="footer-divider-left" style="display:${isLoaded ? "none" : "block"}; width:1px; height:14px; background:#cfd8dc; margin:0 8px;"></div>
    
-           <div id="footerBtnViewFile" title="View Processed File" onclick="window.openDocumentViewer()" style="display:${isLoaded ? 'flex' : 'none'}; margin-left:6px; margin-right:4px; cursor:pointer; align-items:center; justify-content:center; padding:0 4px; height:16px; border-radius:3px; background:#e0f7fa; border:1px solid #4dd0e1;">
-                <span style="font-size:8px; font-weight:800; color:#006064;">${isLoaded ? '⏳' : 'VIEW'}</span>
+           <div id="footerBtnViewFile" title="View Processed File" onclick="window.openDocumentViewer()" style="display:${isLoaded ? "flex" : "none"}; margin-left:6px; margin-right:4px; cursor:pointer; align-items:center; justify-content:center; padding:0 4px; height:16px; border-radius:3px; background:#e0f7fa; border:1px solid #4dd0e1;">
+                <span style="font-size:8px; font-weight:800; color:#006064;">${isLoaded ? "⏳" : "VIEW"}</span>
            </div>
            
-           <div class="footer-divider-middle" style="display:${isLoaded ? 'block' : 'none'}; width:1px; height:12px; background:#b0bec5; margin:0 8px;"></div>
+           <div class="footer-divider-middle" style="display:${isLoaded ? "block" : "none"}; width:1px; height:12px; background:#b0bec5; margin:0 8px;"></div>
 
-           <div id="footerLoaderLocal" style="display:${mode === 'local' ? 'flex' : 'none'}; align-items:center;">
-<label for="footerFileLoader" style="font-size:11px; font-weight:700; color:${isLoaded && mode === 'local' ? '#2e7d32' : '#546e7a'}; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing:0.5px; cursor:${isLoaded ? 'default' : 'pointer'}; pointer-events:${isLoaded ? 'none' : 'auto'}; display:flex; align-items:center; margin:0; white-space:nowrap;">                   <span id="txtFooterFile">${mode === 'local' ? displayLabel : "DATA"}</span>
-                   <span id="iconFooterFile" style="font-size:18px; margin-left:4px; transform:translateY(-2px); display:${isLoaded && mode === 'local' ? 'none' : 'inline'};">📂</span>
+           <div id="footerLoaderLocal" style="display:${mode === "local" ? "flex" : "none"}; align-items:center;">
+<label for="footerFileLoader" style="font-size:11px; font-weight:700; color:${isLoaded && mode === "local" ? "#2e7d32" : "#546e7a"}; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing:0.5px; cursor:${isLoaded ? "default" : "pointer"}; pointer-events:${isLoaded ? "none" : "auto"}; display:flex; align-items:center; margin:0; white-space:nowrap;">                   <span id="txtFooterFile">${mode === "local" ? displayLabel : "DATA"}</span>
+                   <span id="iconFooterFile" style="font-size:18px; margin-left:4px; transform:translateY(-2px); display:${isLoaded && mode === "local" ? "none" : "inline"};">📂</span>
                 </label>
-                <div id="btnDeleteFile" title="Clear File & Cache" onclick="window.clearLoadedFile()" style="display:${isLoaded && mode === 'local' ? 'block' : 'none'}; cursor:pointer; margin-left:4px; font-size:10px; color:#c62828; font-weight:800; padding:0 3px;">✕</div>
+                <div id="btnDeleteFile" title="Clear File & Cache" onclick="window.clearLoadedFile()" style="display:${isLoaded && mode === "local" ? "block" : "none"}; cursor:pointer; margin-left:4px; font-size:10px; color:#c62828; font-weight:800; padding:0 3px;">✕</div>
                 <input type="file" id="footerFileLoader" style="display:none;" onchange="window.handleFooterFileLoad(this)">
            </div>
    
-           <div id="footerLoaderOnit" style="display:${mode === 'onit' ? 'flex' : 'none'}; align-items:center;">
-                <div onclick="window.handleFooterSourceLoad()" style="font-size:11px; font-weight:700; color:${isLoaded && mode === 'onit' ? '#2e7d32' : '#546e7a'}; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; display:flex; align-items:center; white-space:nowrap;">
-                   <span id="txtFooterOnit">${mode === 'onit' ? displayLabel : "ONIT"}</span>
+           <div id="footerLoaderOnit" style="display:${mode === "onit" ? "flex" : "none"}; align-items:center;">
+                <div onclick="window.handleFooterSourceLoad()" style="font-size:11px; font-weight:700; color:${isLoaded && mode === "onit" ? "#2e7d32" : "#546e7a"}; font-family:'Inter', sans-serif; text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; display:flex; align-items:center; white-space:nowrap;">
+                   <span id="txtFooterOnit">${mode === "onit" ? displayLabel : "ONIT"}</span>
                    <span style="font-size:18px; margin-left:4px; transform:translateY(-2px);">☁️</span>
                 </div>
            </div>
@@ -7388,18 +7585,30 @@ function renderMainFooter() {
   document.body.style.paddingBottom = "30px";
 
   // Bind Clicks
-  document.getElementById("footSegDraft").onclick = function () { setWorkflowMode('draft'); };
-  document.getElementById("footSegAll").onclick = function () { setWorkflowMode('all'); };
-  document.getElementById("footSegReview").onclick = function () { setWorkflowMode('review'); };
+  document.getElementById("footSegDraft").onclick = function () {
+    setWorkflowMode("draft");
+  };
+  document.getElementById("footSegAll").onclick = function () {
+    setWorkflowMode("all");
+  };
+  document.getElementById("footSegReview").onclick = function () {
+    setWorkflowMode("review");
+  };
 
   // Bind Version History (Footer)
   var fSnap = document.getElementById("footerBtnSnapshot");
   var fHist = document.getElementById("footerBtnHistory");
-  if (fSnap) fSnap.onclick = function () { showVersionHistoryInterface(); };
-  if (fHist) fHist.onclick = function () { showVersionHistoryInterface(true); };
+  if (fSnap)
+    fSnap.onclick = function () {
+      showVersionHistoryInterface();
+    };
+  if (fHist)
+    fHist.onclick = function () {
+      showVersionHistoryInterface(true);
+    };
 
   // Update Count
-  if (typeof getHistoryFromDoc === 'function') {
+  if (typeof getHistoryFromDoc === "function") {
     getHistoryFromDoc().then(function (list) {
       var cnt = list ? list.length : 0;
       var el = document.getElementById("footerVerCount");
@@ -7416,15 +7625,15 @@ window.clearLoadedFile = async function () {
   // 1. INSTANT MEMORY WIPE
   window.AGREEMENT_DATA = null;
   AGREEMENT_DATA = null;
-  if (typeof GLOBAL_FILENAME !== 'undefined') GLOBAL_FILENAME = "";
-  if (typeof GLOBAL_FILE_BLOB !== 'undefined') GLOBAL_FILE_BLOB = null;
+  if (typeof GLOBAL_FILENAME !== "undefined") GLOBAL_FILENAME = "";
+  if (typeof GLOBAL_FILE_BLOB !== "undefined") GLOBAL_FILE_BLOB = null;
 
   // 2. WIPE DATABASE (Using Unique ID)
-  if (typeof PROMPTS !== 'undefined') {
+  if (typeof PROMPTS !== "undefined") {
     try {
       // --- FIX: Use the Unique Document ID ---
       // This ensures we only delete the file attached to THIS document
-      var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+      var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
 
       // A. Overwrite with null (Safety overwrite)
       await PROMPTS.saveDocToDB(uniqueKey, null);
@@ -7447,11 +7656,18 @@ window.clearLoadedFile = async function () {
   // 3. WIPE PERSISTENCE (Office Settings)
   // This clears the "State" so the UI knows to show "DATA" instead of the filename next time
   try {
-    if (typeof Office !== 'undefined' && Office.context && Office.context.document && Office.context.document.settings) {
+    if (
+      typeof Office !== "undefined" &&
+      Office.context &&
+      Office.context.document &&
+      Office.context.document.settings
+    ) {
       Office.context.document.settings.remove("AgreementDataDetails");
       Office.context.document.settings.saveAsync();
     }
-  } catch (e) { console.warn("Settings wipe error", e); }
+  } catch (e) {
+    console.warn("Settings wipe error", e);
+  }
 
   // 4. RESET UI
   var label = document.querySelector("#footerLoaderLocal label");
@@ -7485,7 +7701,10 @@ window.clearLoadedFile = async function () {
   if (fileInput) fileInput.value = "";
   // --- UNLOCK UPLOAD ---
   var lbl = document.querySelector("label[for='footerFileLoader']");
-  if (lbl) { lbl.style.pointerEvents = "auto"; lbl.style.cursor = "pointer"; }
+  if (lbl) {
+    lbl.style.pointerEvents = "auto";
+    lbl.style.cursor = "pointer";
+  }
   var inp = document.getElementById("footerFileLoader");
   if (inp) inp.disabled = false;
   showToast("🗑️ OARS Data Removed");
@@ -7500,28 +7719,28 @@ window.toggleFooterDataSource = function () {
   var btnOnit = document.getElementById("togBtnOnit");
 
   // Check current state (if local is flex, we go onit)
-  var isLocal = localBox.style.display !== 'none';
+  var isLocal = localBox.style.display !== "none";
 
   if (isLocal) {
     // Switch to Onit
-    localBox.style.display = 'none';
-    onitBox.style.display = 'flex';
+    localBox.style.display = "none";
+    onitBox.style.display = "flex";
 
-    btnLocal.style.background = 'transparent';
-    btnLocal.style.color = '#78909c';
+    btnLocal.style.background = "transparent";
+    btnLocal.style.color = "#78909c";
 
-    btnOnit.style.background = '#546e7a';
-    btnOnit.style.color = '#fff';
+    btnOnit.style.background = "#546e7a";
+    btnOnit.style.color = "#fff";
   } else {
     // Switch to Local
-    onitBox.style.display = 'none';
-    localBox.style.display = 'flex';
+    onitBox.style.display = "none";
+    localBox.style.display = "flex";
 
-    btnOnit.style.background = 'transparent';
-    btnOnit.style.color = '#78909c';
+    btnOnit.style.background = "transparent";
+    btnOnit.style.color = "#78909c";
 
-    btnLocal.style.background = '#546e7a';
-    btnLocal.style.color = '#fff';
+    btnLocal.style.background = "#546e7a";
+    btnLocal.style.color = "#fff";
   }
 };
 
@@ -7565,7 +7784,10 @@ window.handleFooterFileLoad = async function (input) {
     if (btnDel) btnDel.style.display = "block";
     // --- LOCK UPLOAD ---
     var lbl = document.querySelector("label[for='footerFileLoader']");
-    if (lbl) { lbl.style.pointerEvents = "none"; lbl.style.cursor = "default"; }
+    if (lbl) {
+      lbl.style.pointerEvents = "none";
+      lbl.style.cursor = "default";
+    }
     input.disabled = true;
 
     // --- LOGIC: CRITICAL WIPE FIX ---
@@ -7573,18 +7795,15 @@ window.handleFooterFileLoad = async function (input) {
     // 1. Clear RAM immediately
     AGREEMENT_DATA = null;
 
-    var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+    var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
 
     // 2. Wipe Database & Cache (WAIT for it to finish)
-    if (typeof PROMPTS !== 'undefined') {
+    if (typeof PROMPTS !== "undefined") {
       try {
         console.log("Waiting for DB Wipe...");
-        // We use 'await' here to ensure the delete finishes 
+        // We use 'await' here to ensure the delete finishes
         // BEFORE we start reading/saving the new file.
-        await Promise.all([
-          PROMPTS.deleteDocFromDB(uniqueKey),
-          PROMPTS.saveAICacheToDB(uniqueKey, null)
-        ]);
+        await Promise.all([PROMPTS.deleteDocFromDB(uniqueKey), PROMPTS.saveAICacheToDB(uniqueKey, null)]);
         console.log("DB Wipe Complete. Starting Load.");
       } catch (e) {
         console.log("Wipe failed, but proceeding:", e);
@@ -7597,32 +7816,33 @@ window.handleFooterFileLoad = async function (input) {
       var reader = new FileReader();
       reader.onload = function (e) {
         var arrayBuffer = e.target.result;
-        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+        mammoth
+          .convertToHtml({ arrayBuffer: arrayBuffer })
           .then(function (result) {
-            var cleanText = result.value.replace(/<[^>]*>/g, ' ');
+            var cleanText = result.value.replace(/<[^>]*>/g, " ");
             AGREEMENT_DATA = { text: cleanText, name: file.name };
 
             // Overwrite DB Record
             finishFooterLoad(file, uniqueKey);
           })
-          .catch(function (err) { console.error("Mammoth Error", err); });
+          .catch(function (err) {
+            console.error("Mammoth Error", err);
+          });
       };
       reader.readAsArrayBuffer(file);
-    }
-    else if (file.name.toLowerCase().endsWith(".pdf")) {
+    } else if (file.name.toLowerCase().endsWith(".pdf")) {
       var reader = new FileReader();
       reader.onload = function (e) {
         AGREEMENT_DATA = {
           isBase64: true,
           mime: "application/pdf",
-          data: e.target.result.split(',')[1],
-          name: file.name
+          data: e.target.result.split(",")[1],
+          name: file.name,
         };
         finishFooterLoad(file, uniqueKey);
       };
       reader.readAsDataURL(file);
-    }
-    else {
+    } else {
       var reader = new FileReader();
       reader.onload = function (e) {
         AGREEMENT_DATA = { text: e.target.result, name: file.name };
@@ -7646,29 +7866,30 @@ function finishFooterLoad(file, optionalBuffer) {
   persistAgreementState(file.name, "local");
 
   // 5. Persist Data (IndexedDB)
-  var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+  var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
 
   // Save the DOC using the unique key...
-  PROMPTS.saveDocToDB(uniqueKey, file).then(() => {
+  PROMPTS.saveDocToDB(uniqueKey, file)
+    .then(() => {
+      // ...and Clear the CACHE using the SAME unique key
+      // ✅ FIX: Changed 'currentDoc' to uniqueKey
+      PROMPTS.saveAICacheToDB(uniqueKey, null).then(() => {
+        console.log("Old AI Cache Purged.");
 
-    // ...and Clear the CACHE using the SAME unique key
-    // ✅ FIX: Changed 'currentDoc' to uniqueKey
-    PROMPTS.saveAICacheToDB(uniqueKey, null).then(() => {
-      console.log("Old AI Cache Purged.");
+        // Double check memory wipe here just to be safe
+        window.CURRENT_AI_RESPONSE = null;
 
-      // Double check memory wipe here just to be safe
-      window.CURRENT_AI_RESPONSE = null;
+        showToast("💾 Agreement Data Loaded");
 
-      showToast("💾 Agreement Data Loaded");
+        // Load indicator
+        var statusSpan = document.querySelector("#footerBtnViewFile span");
+        if (statusSpan) statusSpan.innerText = "⏳";
 
-      // Load indicator
-      var statusSpan = document.querySelector("#footerBtnViewFile span");
-      if (statusSpan) statusSpan.innerText = "⏳";
-
-      // Trigger Background Analysis
-      PROMPTS.runBackgroundAIAnalysis(file);
-    });
-  }).catch(err => console.error("DB Save Fail", err));
+        // Trigger Background Analysis
+        PROMPTS.runBackgroundAIAnalysis(file);
+      });
+    })
+    .catch((err) => console.error("DB Save Fail", err));
 }
 
 window.handleFooterSourceLoad = function () {
@@ -7689,19 +7910,24 @@ window.handleFooterSourceLoad = function () {
 
     // Persist State
     persistAgreementState(sourceId + " (Connected)", "onit");
-
   }, 800);
 };
 // Persist Helper
 function persistAgreementState(name, type) {
   try {
-    if (typeof Office !== 'undefined' && Office && Office.context && Office.context.document && Office.context.document.settings) {
+    if (
+      typeof Office !== "undefined" &&
+      Office &&
+      Office.context &&
+      Office.context.document &&
+      Office.context.document.settings
+    ) {
       Office.context.document.settings.set("AgreementDataDetails", { sourceName: name, type: type });
       Office.context.document.settings.saveAsync(function (res) {
         console.log("Agreement State Persisted", res);
       });
     }
-  } catch (e) { }
+  } catch (e) {}
 }
 
 // ==========================================
@@ -7770,7 +7996,10 @@ function updatePlaceholderUI(hasSelection) {
 // ==========================================
 function showHome() {
   setActiveButton("");
-  if (currentController) { currentController.abort(); currentController = null; }
+  if (currentController) {
+    currentController.abort();
+    currentController = null;
+  }
   setLoading(false);
 
   var out = document.getElementById("output");
@@ -7786,7 +8015,7 @@ function showHome() {
   // --- WORKFLOW CONTENT LOGIC ---
   var contentHTML = "";
 
-  if (currentWorkflowMode === 'draft') {
+  if (currentWorkflowMode === "draft") {
     contentHTML = `
         <div style="font-weight:800; color:#e65100; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #ffe0b2; padding-bottom:4px;">
             📝 DRAFTING WORKFLOW
@@ -7811,7 +8040,7 @@ function showHome() {
             </div>
         </div>
       `;
-  } else if (currentWorkflowMode === 'review') {
+  } else if (currentWorkflowMode === "review") {
     contentHTML = `
         <div style="font-weight:800; color:#1565c0; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #bbdefb; padding-bottom:4px;">
             🔍 REVIEW WORKFLOW
@@ -7849,7 +8078,7 @@ function showHome() {
   // Render Placeholder
   var placeholder = document.createElement("div");
   placeholder.className = "placeholder";
-  if (currentWorkflowMode !== 'all') placeholder.style.padding = "20px";
+  if (currentWorkflowMode !== "all") placeholder.style.padding = "20px";
 
   placeholder.innerHTML = contentHTML;
   out.appendChild(placeholder);
@@ -7883,7 +8112,8 @@ function showCompareInterface() {
   // --- 1. REDLINE SUMMARY ---
   var redlineCard = document.createElement("div");
   redlineCard.className = "tool-box slide-in";
-  redlineCard.style.cssText = "background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);";
+  redlineCard.style.cssText =
+    "background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);";
   redlineCard.innerHTML = `
         <div style="padding: 8px 12px; border-bottom: 1px solid #f0f0f0; background: linear-gradient(to right, #fff5f5, #fff);">
             <div style="display:flex; align-items:center; gap:8px;">
@@ -7905,10 +8135,10 @@ function showCompareInterface() {
   // --- OPTION 2A: TEMPLATE LIBRARY ---
   var templateCard = document.createElement("div");
   templateCard.className = "tool-box slide-in";
-  templateCard.style.cssText = "flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-width: 0;";
+  templateCard.style.cssText =
+    "flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-width: 0;";
   // FIX: Append immediately to reserve the left slot (Option 2A)
   rowContainer.appendChild(templateCard); // <--- ADD THIS LINE
-
 
   // Load Templates
   // WRAPPER START
@@ -7921,7 +8151,7 @@ function showCompareInterface() {
         savedTemplates = savedTemplates.concat(oldArr);
         saveFeatureData(STORE_TEMPLATES, savedTemplates);
         localStorage.removeItem("colgate_standard_templates");
-      } catch (e) { }
+      } catch (e) {}
     }
 
     // 1. DATA PROCESSING (Group by Library -> Type)
@@ -7935,8 +8165,14 @@ function showCompareInterface() {
       // Legacy Fallback (Parsing "Lib - Type - Name" string)
       if (!t.library && t.name.includes(" - ")) {
         var parts = t.name.split(" - ");
-        if (parts.length >= 3) { lib = parts[0]; type = parts[1]; name = parts.slice(2).join(" - "); }
-        else if (parts.length === 2) { type = parts[0]; name = parts[1]; }
+        if (parts.length >= 3) {
+          lib = parts[0];
+          type = parts[1];
+          name = parts.slice(2).join(" - ");
+        } else if (parts.length === 2) {
+          type = parts[0];
+          name = parts[1];
+        }
       }
 
       if (!libraryData[lib]) libraryData[lib] = {};
@@ -7967,7 +8203,7 @@ function showCompareInterface() {
     var headerInner = "";
     if (libraryList.length > 1) {
       headerInner = `<select id="selLibraryRef" style="font-family:inherit; font-weight:400; font-size:9px; margin-left:20px; border:none; background:transparent; opacity:0.8; cursor:pointer; outline:none; max-width:140px;">
-                        ${libraryList.map(l => `<option value="${l}">${l}</option>`).join('')}
+                        ${libraryList.map((l) => `<option value="${l}">${l}</option>`).join("")}
                      </select>`;
     } else {
       headerInner = `<div style="font-weight:400; opacity:0.8; font-size:9px; margin-left:20px;">(${libraryList[0] || "Standard Library"})</div>`;
@@ -7990,23 +8226,23 @@ function showCompareInterface() {
 
       // DATA BINDING HELPERS
       function updateTypes() {
-        var currentLib = libSel ? libSel.value : (libraryList[0] || "");
+        var currentLib = libSel ? libSel.value : libraryList[0] || "";
         var types = [];
         if (currentLib && libraryData[currentLib]) {
           types = Object.keys(libraryData[currentLib]);
         }
-        typeSel.innerHTML = types.map(k => `<option value="${k}">${k}</option>`).join('');
+        typeSel.innerHTML = types.map((k) => `<option value="${k}">${k}</option>`).join("");
         updateSubtypes(); // Chain reaction
       }
 
       function updateSubtypes() {
-        var currentLib = libSel ? libSel.value : (libraryList[0] || "");
+        var currentLib = libSel ? libSel.value : libraryList[0] || "";
         var cat = typeSel.value;
         var items = [];
         if (libraryData[currentLib] && libraryData[currentLib][cat]) {
           items = libraryData[currentLib][cat];
         }
-        subSel.innerHTML = items.map(i => `<option value="${i.index}">${i.label}</option>`).join('');
+        subSel.innerHTML = items.map((i) => `<option value="${i.index}">${i.label}</option>`).join("");
       }
 
       // INITIALIZE & ATTACH LISTENERS
@@ -8022,13 +8258,13 @@ function showCompareInterface() {
         }
       };
     }
-
   });
 
   // --- OPTION 2B: UPLOAD FILE ---
   var deepCompareCard = document.createElement("div");
   deepCompareCard.className = "tool-box slide-in";
-  deepCompareCard.style.cssText = "flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-width: 0;";
+  deepCompareCard.style.cssText =
+    "flex: 1; background: #fff; border: 1px solid #e0e0e0; border-radius: 0px; padding: 0; margin: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-width: 0;";
   var blueDropStyle = `width: 100%; border-radius: 0px; margin-bottom: 8px; font-size: 11px; padding: 6px; border: 1px solid #bbdefb; background: #e3f2fd; color: #1565c0; font-weight: 600; outline: none;`;
 
   deepCompareCard.innerHTML = `
@@ -8054,9 +8290,10 @@ function showCompareInterface() {
 
   // --- BIND EVENTS ---
   var btnSum = document.getElementById("btnSumRedlines");
-  if (btnSum) btnSum.onclick = function () { runRedlineSummary(this); };
-
-
+  if (btnSum)
+    btnSum.onclick = function () {
+      runRedlineSummary(this);
+    };
 
   var compDrop = document.getElementById("compareDropZone");
   var compInput = document.getElementById("compareFileInput");
@@ -8064,7 +8301,10 @@ function showCompareInterface() {
   var compSelect = document.getElementById("compareContextSelect");
 
   if (compDrop && compInput) {
-    compDrop.onclick = function () { compInput.value = null; compInput.click(); };
+    compDrop.onclick = function () {
+      compInput.value = null;
+      compInput.click();
+    };
     compInput.onchange = function (e) {
       compStatus.style.display = "block";
       handleFileSelect(e.target.files[0], function (text) {
@@ -8081,8 +8321,6 @@ function showCompareInterface() {
   btnHome.style.cssText = `width: 100%; margin-top: 20px; border-radius:0px; padding:10px;`;
   btnHome.onclick = showHome;
   out.appendChild(btnHome);
-
-
 }
 // ==========================================
 // END: showCompareInterface
@@ -8096,7 +8334,7 @@ function handleFileSelect(file, callback) {
     var pdfReader = new FileReader();
     pdfReader.onload = function (e) {
       // Extract Base64 string
-      var b64 = e.target.result.split(',')[1];
+      var b64 = e.target.result.split(",")[1];
       // Pass special object to callback instead of text
       if (callback) callback({ isBase64: true, mime: "application/pdf", data: b64 }, null);
     };
@@ -8108,12 +8346,14 @@ function handleFileSelect(file, callback) {
     var arrayBuffer = loadEvent.target.result;
 
     // 1. Extract Raw Text (For AI/Comparison)
-    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+    mammoth
+      .extractRawText({ arrayBuffer: arrayBuffer })
       .then(function (resultText) {
         var text = resultText.value;
 
         // 2. Extract HTML (For 'View' Window)
-        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+        mammoth
+          .convertToHtml({ arrayBuffer: arrayBuffer })
           .then(function (resultHtml) {
             var html = resultHtml.value;
 
@@ -8195,8 +8435,7 @@ function renderCompareResults(items, mode) {
   out.innerHTML = "<div class='results-header'>Comparison Results</div>";
 
   if (!items || items.length === 0) {
-    out.innerHTML +=
-      "<div class='placeholder'>✅ No significant legal differences found.</div>";
+    out.innerHTML += "<div class='placeholder'>✅ No significant legal differences found.</div>";
     return;
   }
 
@@ -8242,16 +8481,16 @@ function renderCompareResults(items, mode) {
       return `<button class="btn-action" style="padding:1px 6px; font-size:9px; margin-left:6px; display:inline-block; width:auto; border-radius:2px; background:#fff; border:1px solid #999; color:#333; cursor:pointer;" onclick="locateText('${safe}', this, true)">📍 Locate</button>`;
     };
 
-    var leftBtn = (mode === "new") ? locateBtn(item.original_snippet) : "";
-    var rightBtn = (mode === "old" || mode === "template") ? locateBtn(item.new_snippet) : "";
+    var leftBtn = mode === "new" ? locateBtn(item.original_snippet) : "";
+    var rightBtn = mode === "old" || mode === "template" ? locateBtn(item.new_snippet) : "";
 
     // Explicitly check boolean (default FALSE)
-    var showBadges = (userSettings.showCompareRisk === true);
+    var showBadges = userSettings.showCompareRisk === true;
 
     var html = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <strong style="color:#212529; font-size:14px;">${item.section}</strong>
-                ${showBadges ? `<span class="badge" style="background:${color}20; color:${color};">${icon} ${item.change_type.toUpperCase()}</span>` : ''}
+                ${showBadges ? `<span class="badge" style="background:${color}20; color:${color};">${icon} ${item.change_type.toUpperCase()}</span>` : ""}
             </div>
             
             <div style="font-size:13px; color:#444; margin-bottom:12px; font-weight:500;">
@@ -8348,7 +8587,7 @@ function generateNegotiationEmail() {
         } else if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
           cleanText = cleanText.slice(1, -1);
         }
-      } catch (e) { }
+      } catch (e) {}
 
       cleanText = cleanText.replace(/\\"/g, '"');
       cleanText = cleanText.replace(/\\n/g, "\n\n");
@@ -8391,7 +8630,9 @@ function generateNegotiationEmail() {
       emailContainer.style.padding = "0";
 
       // Bind Close/Discard
-      var closer = function () { document.getElementById('negotiationResult').remove(); };
+      var closer = function () {
+        document.getElementById("negotiationResult").remove();
+      };
       document.getElementById("btnCloseNego").onclick = closer;
       document.getElementById("btnDiscardNego").onclick = closer;
 
@@ -8406,7 +8647,9 @@ function generateNegotiationEmail() {
         window.getSelection().removeAllRanges();
 
         this.innerText = "Copied! ✅";
-        setTimeout(() => { this.innerText = "Copy Email"; }, 2000);
+        setTimeout(() => {
+          this.innerText = "Copy Email";
+        }, 2000);
       };
     })
     .catch(function (e) {
@@ -8466,7 +8709,7 @@ function renderJustifyBubble(data) {
 
   // Apply Styles
   var btns = bubble.querySelectorAll(".btn-plat-purple");
-  btns.forEach(b => {
+  btns.forEach((b) => {
     b.style.cssText = `
           flex: 1;
           background: linear-gradient(to bottom, #ffffff 0%, #eceff1 100%);
@@ -8482,20 +8725,29 @@ function renderJustifyBubble(data) {
           cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 6px;
       `;
-    b.onmouseover = function () { this.style.background = "#f3e5f5"; };
-    b.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)"; };
+    b.onmouseover = function () {
+      this.style.background = "#f3e5f5";
+    };
+    b.onmouseout = function () {
+      this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)";
+    };
   });
 
   // --- JUMP FIX ---
   var scrollParent = document.getElementById("output");
-  if (scrollParent) setTimeout(() => { scrollParent.scrollTop = scrollParent.scrollHeight; }, 10);
+  if (scrollParent)
+    setTimeout(() => {
+      scrollParent.scrollTop = scrollParent.scrollHeight;
+    }, 10);
 
   // Bind Buttons
   var btnCopy = bubble.querySelector(".btn-copy");
   btnCopy.onclick = function () {
     navigator.clipboard.writeText(cleanRationale);
     this.innerHTML = "✅ Copied";
-    setTimeout(() => { btnCopy.innerHTML = "📄 Copy"; }, 2000);
+    setTimeout(() => {
+      btnCopy.innerHTML = "📄 Copy";
+    }, 2000);
   };
 
   var btnComment = bubble.querySelector(".btn-comment");
@@ -8514,21 +8766,21 @@ function normalizeAIArray(input) {
   if (!input) return [];
 
   // Case A: Single String ("john@doe.com")
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     // Basic cleanup
-    var clean = input.replace(/[\[\]"]/g, '').trim();
+    var clean = input.replace(/[\[\]"]/g, "").trim();
     if (clean.includes(",")) {
       // "a@b.com, c@d.com" -> Split
-      return clean.split(",").map(s => ({ email: s.trim() }));
+      return clean.split(",").map((s) => ({ email: s.trim() }));
     }
     return [{ email: clean }];
   }
 
   // Case B: Array (could be strings OR objects)
   if (Array.isArray(input)) {
-    return input.map(item => {
+    return input.map((item) => {
       // If string, wrap it
-      if (typeof item === 'string') return { email: item };
+      if (typeof item === "string") return { email: item };
       // If object, keep it
       return item;
     });
@@ -8591,17 +8843,23 @@ function renderClauseBubble(data) {
   btnInsert.style.borderBottomColor = "#81c784";
   btnInsert.innerHTML = "<span style='font-size:14px;'>📍</span> Insert";
 
-  btnInsert.onmouseover = function () { this.style.background = "#e8f5e9"; };
-  btnInsert.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)"; };
+  btnInsert.onmouseover = function () {
+    this.style.background = "#e8f5e9";
+  };
+  btnInsert.onmouseout = function () {
+    this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)";
+  };
 
   btnInsert.onclick = function () {
     // Show the "Scroll to Location" Modal
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
     var dialog = document.createElement("div");
     dialog.className = "tool-box slide-in";
-    dialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #2e7d32; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:0px;";
+    dialog.style.cssText =
+      "background:white; width:280px; padding:20px; border-left:5px solid #2e7d32; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:0px;";
 
     dialog.innerHTML = `
             <div style="font-size:24px; margin-bottom:10px;">📍</div>
@@ -8617,7 +8875,9 @@ function renderClauseBubble(data) {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    document.getElementById("btnCancelInsert").onclick = function () { overlay.remove(); };
+    document.getElementById("btnCancelInsert").onclick = function () {
+      overlay.remove();
+    };
 
     document.getElementById("btnConfirmInsert").onclick = function () {
       overlay.remove();
@@ -8647,7 +8907,9 @@ function renderClauseBubble(data) {
   btnCopy.onclick = function () {
     navigator.clipboard.writeText(data.text);
     this.innerHTML = "✅ Copied";
-    setTimeout(() => { this.innerHTML = "<span style='font-size:14px;'>📄</span> Copy"; }, 2000);
+    setTimeout(() => {
+      this.innerHTML = "<span style='font-size:14px;'>📄</span> Copy";
+    }, 2000);
   };
 
   // Assemble
@@ -8659,7 +8921,10 @@ function renderClauseBubble(data) {
 
   // --- JUMP FIX ---
   var scrollParent = document.getElementById("output");
-  if (scrollParent) setTimeout(() => { scrollParent.scrollTop = scrollParent.scrollHeight; }, 10);
+  if (scrollParent)
+    setTimeout(() => {
+      scrollParent.scrollTop = scrollParent.scrollHeight;
+    }, 10);
 }
 // ==========================================
 // START: askUserSelectionScope (Platinum V3)
@@ -8668,7 +8933,8 @@ function askUserSelectionScope() {
   return new Promise((resolve, reject) => {
     // 1. Create Overlay
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(33, 33, 33, 0.6); backdrop-filter:blur(3px); z-index:20000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(33, 33, 33, 0.6); backdrop-filter:blur(3px); z-index:20000; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease;";
 
     // 2. Create Modal Box (Squared & Premium)
     var box = document.createElement("div");
@@ -8743,7 +9009,10 @@ function askUserSelectionScope() {
 
         // Colorize Icon on Hover
         var iconSpan = this.querySelector("span");
-        if (iconSpan) { iconSpan.style.filter = "none"; iconSpan.style.opacity = "1"; }
+        if (iconSpan) {
+          iconSpan.style.filter = "none";
+          iconSpan.style.opacity = "1";
+        }
       };
 
       btn.onmouseout = function () {
@@ -8755,7 +9024,10 @@ function askUserSelectionScope() {
 
         // Reset Icon
         var iconSpan = this.querySelector("span");
-        if (iconSpan) { iconSpan.style.filter = "grayscale(100%)"; iconSpan.style.opacity = "0.8"; }
+        if (iconSpan) {
+          iconSpan.style.filter = "grayscale(100%)";
+          iconSpan.style.opacity = "0.8";
+        }
       };
 
       btn.onclick = function () {
@@ -8790,8 +9062,12 @@ function askUserSelectionScope() {
             width: 24px; height: 24px; text-align: center; line-height: 24px;
             transition: color 0.2s;
             `;
-    closeX.onmouseover = function () { this.style.color = "#d32f2f"; };
-    closeX.onmouseout = function () { this.style.color = "#b0bec5"; };
+    closeX.onmouseover = function () {
+      this.style.color = "#d32f2f";
+    };
+    closeX.onmouseout = function () {
+      this.style.color = "#b0bec5";
+    };
 
     closeX.onclick = function () {
       overlay.remove();
@@ -8860,18 +9136,22 @@ function locateSummaryItem(el, textToFind, riskTitle, riskDetail, forceParagraph
 
   if (Array.from(rootSet).length > 1) {
     // (Simplified Multi-Section Dialog - kept brief for stability)
-    var uniqueDisplayNames = foundSections.map(s => s.trim()).filter((v, i, a) => a.indexOf(v) === i);
-    var listHtml = `<ul style="margin:10px 0; padding-left:20px;">${uniqueDisplayNames.map(s => `<li style="text-transform:capitalize;"><strong>${s}</strong></li>`).join("")}</ul>`;
+    var uniqueDisplayNames = foundSections.map((s) => s.trim()).filter((v, i, a) => a.indexOf(v) === i);
+    var listHtml = `<ul style="margin:10px 0; padding-left:20px;">${uniqueDisplayNames.map((s) => `<li style="text-transform:capitalize;"><strong>${s}</strong></li>`).join("")}</ul>`;
 
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
     var dialog = document.createElement("div");
     dialog.className = "tool-box slide-in";
-    dialog.style.cssText = "background:white; width:320px; border-left:5px solid #d32f2f; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:4px;";
+    dialog.style.cssText =
+      "background:white; width:320px; border-left:5px solid #d32f2f; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2); border-radius:4px;";
     dialog.innerHTML = `<div style="font-size:24px; margin-bottom:10px;">⚠️</div><div style="font-weight:700; color:#c62828; margin-bottom:10px; font-size:14px;">Multi-Section Risk</div><div style="font-size:12px; color:#555; line-height:1.5; margin-bottom:15px;">This risk spans multiple areas:<br>${listHtml}</div><button id="btnOkLocate" class="btn-action" style="width:100%; font-weight:bold;">OK, Review Manually</button>`;
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
-    document.getElementById("btnOkLocate").onclick = function () { overlay.remove(); };
+    document.getElementById("btnOkLocate").onclick = function () {
+      overlay.remove();
+    };
 
     // Reset Button immediately
     el.innerHTML = originalHtml;
@@ -8882,8 +9162,12 @@ function locateSummaryItem(el, textToFind, riskTitle, riskDetail, forceParagraph
 
   // --- FRAGMENT PREPARATION ---
   var fragments = textToFind.split(/[\r\n]+|\.{3,}/g);
-  fragments = fragments.filter(function (f) { return f.trim().length > 20; });
-  fragments.sort(function (a, b) { return b.length - a.length; });
+  fragments = fragments.filter(function (f) {
+    return f.trim().length > 20;
+  });
+  fragments.sort(function (a, b) {
+    return b.length - a.length;
+  });
   var quoteTarget = fragments.length > 0 ? fragments[0].trim() : textToFind.trim();
 
   Word.run(async function (context) {
@@ -8953,11 +9237,13 @@ function locateSummaryItem(el, textToFind, riskTitle, riskDetail, forceParagraph
         el.style.color = "#e65100";
 
         var overlay = document.createElement("div");
-        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+        overlay.style.cssText =
+          "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
         var dialog = document.createElement("div");
         dialog.className = "tool-box slide-in";
-        dialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+        dialog.style.cssText =
+          "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
         dialog.innerHTML = `
             <div style="font-size:24px; margin-bottom:10px;">⚠️</div>
@@ -9252,12 +9538,19 @@ function renderTranslateBubble(data, originalText) {
                 padding: 10px;
                 cursor: pointer;
                 `;
-  btn.onmouseover = function () { this.style.background = "#f3e5f5"; };
-  btn.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)"; };
+  btn.onmouseover = function () {
+    this.style.background = "#f3e5f5";
+  };
+  btn.onmouseout = function () {
+    this.style.background = "linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)";
+  };
 
   // --- JUMP FIX ---
   var scrollParent = document.getElementById("output");
-  if (scrollParent) setTimeout(() => { scrollParent.scrollTop = scrollParent.scrollHeight; }, 10);
+  if (scrollParent)
+    setTimeout(() => {
+      scrollParent.scrollTop = scrollParent.scrollHeight;
+    }, 10);
 
   btn.onclick = function () {
     btn.innerText = "Applying...";
@@ -9402,11 +9695,15 @@ function showInterfaceConfig() {
   out.classList.remove("hidden");
 
   // 1. Local State (Deep Copy)
-  var localMaps = JSON.parse(JSON.stringify(userSettings.workflowMaps || {
-    "default": [],
-    "draft": [],
-    "review": []
-  }));
+  var localMaps = JSON.parse(
+    JSON.stringify(
+      userSettings.workflowMaps || {
+        default: [],
+        draft: [],
+        review: [],
+      },
+    ),
+  );
 
   // --- FIX: Ensure activeEditMode matches a valid dropdown option ---
   var activeEditMode = currentWorkflowMode;
@@ -9416,14 +9713,14 @@ function showInterfaceConfig() {
 
   // Definition of Tools (Metadata)
   var toolMeta = {
-    "error": { label: "Error Check", icon: "📝" },
-    "legal": { label: "Legal Assist", icon: "⚖️" },
-    "summary": { label: "Summary", icon: "📋" },
-    "chat": { label: "Ask ELI", icon: "💬" },
-    "playbook": { label: "Playbook", icon: "📖" },
-    "compare": { label: "Compare", icon: "↔️" },
-    "template": { label: "Build Draft", icon: "⚡" },
-    "email": { label: "Email Tool", icon: "✉️" }
+    error: { label: "Error Check", icon: "📝" },
+    legal: { label: "Legal Assist", icon: "⚖️" },
+    summary: { label: "Summary", icon: "📋" },
+    chat: { label: "Ask ELI", icon: "💬" },
+    playbook: { label: "Playbook", icon: "📖" },
+    compare: { label: "Compare", icon: "↔️" },
+    template: { label: "Build Draft", icon: "⚡" },
+    email: { label: "Email Tool", icon: "✉️" },
   };
 
   // Ensure store apps are included
@@ -9434,29 +9731,34 @@ function showInterfaceConfig() {
   // 2. Container
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding:0; overflow:hidden; border-left:5px solid #1565c0; border-radius:0px; background:#fff; position:relative;";
+  card.style.cssText =
+    "padding:0; overflow:hidden; border-left:5px solid #1565c0; border-radius:0px; background:#fff; position:relative;";
 
   // 3. Header
   var header = document.createElement("div");
-  header.style.cssText = "background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 12px 15px; border-bottom: 3px solid #c9a227; display: flex; justify-content: space-between; align-items: center;";
-  header.innerHTML = '<div style="color:white;">' +
-    '<div style="font-family:\'Inter\',sans-serif; font-size:9px; font-weight:700; color:#8fa6c7; text-transform:uppercase; letter-spacing:2px;">INTERFACE</div>' +
-    '<div style="font-family:\'Georgia\',serif; font-size:16px;">🎨 Customize Toolbar</div>' +
-    '</div>' +
+  header.style.cssText =
+    "background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 12px 15px; border-bottom: 3px solid #c9a227; display: flex; justify-content: space-between; align-items: center;";
+  header.innerHTML =
+    '<div style="color:white;">' +
+    "<div style=\"font-family:'Inter',sans-serif; font-size:9px; font-weight:700; color:#8fa6c7; text-transform:uppercase; letter-spacing:2px;\">INTERFACE</div>" +
+    "<div style=\"font-family:'Georgia',serif; font-size:16px;\">🎨 Customize Toolbar</div>" +
+    "</div>" +
     '<div id="btnCloseConfig" style="cursor:pointer; color:#fff; font-weight:bold; font-size:16px; opacity:0.8;">✕</div>';
   card.appendChild(header);
 
   // 4. Workflow Selector
   var selectorRow = document.createElement("div");
-  selectorRow.style.cssText = "background:#f1f8e9; padding:12px 15px; border-bottom:1px solid #dcedc8; display:flex; align-items:center; gap:10px;";
+  selectorRow.style.cssText =
+    "background:#f1f8e9; padding:12px 15px; border-bottom:1px solid #dcedc8; display:flex; align-items:center; gap:10px;";
 
   // Note: We use "default" as the value for the "All Tools" option
-  var selHtml = '<label style="font-size:10px; font-weight:700; color:#33691e; text-transform:uppercase;">EDITING PROFILE:</label>' +
+  var selHtml =
+    '<label style="font-size:10px; font-weight:700; color:#33691e; text-transform:uppercase;">EDITING PROFILE:</label>' +
     '<select id="cfgModeSel" class="audience-select" style="flex:1; margin-bottom:0; height:28px; padding:2px 8px; border:1px solid #a5d6a7; color:#1b5e20; font-weight:600;">' +
     '<option value="default">Default (All Tools)</option>' +
     '<option value="draft">Drafting Mode</option>' +
     '<option value="review">Review Mode</option>' +
-    '</select>';
+    "</select>";
 
   selectorRow.innerHTML = selHtml;
   card.appendChild(selectorRow);
@@ -9474,8 +9776,14 @@ function showInterfaceConfig() {
     b.innerHTML = text;
     b.style.padding = "2px 8px";
     b.style.minWidth = "24px";
-    if (type === "delete") { b.classList.add("delete"); b.style.color = "#c62828"; }
-    if (type === "add") { b.style.color = "#2e7d32"; b.style.fontWeight = "900"; }
+    if (type === "delete") {
+      b.classList.add("delete");
+      b.style.color = "#c62828";
+    }
+    if (type === "add") {
+      b.style.color = "#2e7d32";
+      b.style.fontWeight = "900";
+    }
     b.onclick = onClick;
     return b;
   }
@@ -9490,16 +9798,18 @@ function showInterfaceConfig() {
 
     // Determine hidden items
     var allKeys = Object.keys(toolMeta);
-    var hidden = allKeys.filter(function (k) { return playlist.indexOf(k) === -1; });
+    var hidden = allKeys.filter(function (k) {
+      return playlist.indexOf(k) === -1;
+    });
 
     // Inner Function: Render Section
     function renderSection(title, items, pageNum) {
       var secHeader = document.createElement("div");
       secHeader.className = "config-header";
-      var countInfo = (pageNum > 0) ? items.length + "/4" : items.length + " Available";
+      var countInfo = pageNum > 0 ? items.length + "/4" : items.length + " Available";
 
       // --- COLLAPSIBLE LOGIC ---
-      var isCollapsible = (pageNum === 0);
+      var isCollapsible = pageNum === 0;
       var containerDiv = document.createElement("div");
 
       if (isCollapsible) {
@@ -9512,11 +9822,18 @@ function showInterfaceConfig() {
         secHeader.style.alignItems = "center";
         secHeader.setAttribute("title", "Click to expand/collapse");
 
-        secHeader.innerHTML = '<div style="display:flex; align-items:center; gap:6px;">' +
-          '<span id="arrow_' + pageNum + '" style="font-size:10px; color:#546e7a;">▶</span> ' +
-          '<span>' + title + '</span>' +
-          '</div>' +
-          '<span style="opacity:0.5; font-size:9px;">' + countInfo + '</span>';
+        secHeader.innerHTML =
+          '<div style="display:flex; align-items:center; gap:6px;">' +
+          '<span id="arrow_' +
+          pageNum +
+          '" style="font-size:10px; color:#546e7a;">▶</span> ' +
+          "<span>" +
+          title +
+          "</span>" +
+          "</div>" +
+          '<span style="opacity:0.5; font-size:9px;">' +
+          countInfo +
+          "</span>";
 
         secHeader.onclick = function () {
           var isHidden = containerDiv.style.display === "none";
@@ -9526,13 +9843,15 @@ function showInterfaceConfig() {
         };
       } else {
         // Standard Header
-        secHeader.innerHTML = '<span>' + title + '</span> <span style="opacity:0.5; font-size:9px;">' + countInfo + '</span>';
+        secHeader.innerHTML =
+          "<span>" + title + '</span> <span style="opacity:0.5; font-size:9px;">' + countInfo + "</span>";
       }
 
       content.appendChild(secHeader);
 
       if (items.length === 0) {
-        containerDiv.innerHTML = '<div style="font-size:10px; color:#ccc; font-style:italic; padding:4px 12px; margin-bottom:8px;">(Empty slot)</div>';
+        containerDiv.innerHTML =
+          '<div style="font-size:10px; color:#ccc; font-style:italic; padding:4px 12px; margin-bottom:8px;">(Empty slot)</div>';
       }
 
       items.forEach(function (key, index) {
@@ -9544,16 +9863,24 @@ function showInterfaceConfig() {
 
         // Left: Icon + Label
         var left = document.createElement("div");
-        left.style.display = "flex"; left.style.alignItems = "center"; left.style.gap = "8px";
-        left.innerHTML = '<span style="font-size:16px;">' + tool.icon + '</span> <span style="font-size:11px; font-weight:600; color:#37474f;">' + tool.label + '</span>';
+        left.style.display = "flex";
+        left.style.alignItems = "center";
+        left.style.gap = "8px";
+        left.innerHTML =
+          '<span style="font-size:16px;">' +
+          tool.icon +
+          '</span> <span style="font-size:11px; font-weight:600; color:#37474f;">' +
+          tool.label +
+          "</span>";
 
         // Right: Controls
         var right = document.createElement("div");
-        right.style.display = "flex"; right.style.gap = "4px";
+        right.style.display = "flex";
+        right.style.gap = "4px";
 
         if (pageNum > 0) {
           // Swap Up
-          var globalIdx = (pageNum === 1) ? index : index + 4;
+          var globalIdx = pageNum === 1 ? index : index + 4;
 
           if (globalIdx > 0) {
             var btnUp = createMiniBtn("▲", function () {
@@ -9575,22 +9902,29 @@ function showInterfaceConfig() {
             right.appendChild(btnDown);
           }
           // Remove
-          var btnHide = createMiniBtn("✕", function () {
-            playlist.splice(globalIdx, 1);
-            renderList();
-          }, "delete");
+          var btnHide = createMiniBtn(
+            "✕",
+            function () {
+              playlist.splice(globalIdx, 1);
+              renderList();
+            },
+            "delete",
+          );
           right.appendChild(btnHide);
-
         } else {
           // Restore
-          var btnAdd = createMiniBtn("✚", function () {
-            if (playlist.length >= 8) {
-              showToast("⚠️ Toolbar is full (8/8). Remove one first.");
-            } else {
-              playlist.push(key);
-              renderList();
-            }
-          }, "add");
+          var btnAdd = createMiniBtn(
+            "✚",
+            function () {
+              if (playlist.length >= 8) {
+                showToast("⚠️ Toolbar is full (8/8). Remove one first.");
+              } else {
+                playlist.push(key);
+                renderList();
+              }
+            },
+            "add",
+          );
           right.appendChild(btnAdd);
         }
 
@@ -9609,7 +9943,8 @@ function showInterfaceConfig() {
 
   // --- FOOTER (Actions) ---
   var footer = document.createElement("div");
-  footer.style.cssText = "padding:10px 16px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px; flex-direction:column;";
+  footer.style.cssText =
+    "padding:10px 16px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px; flex-direction:column;";
 
   var btnRow = document.createElement("div");
   btnRow.style.cssText = "display:flex; gap:10px;";
@@ -9622,20 +9957,25 @@ function showInterfaceConfig() {
   // Custom Reset Dialog
   btnReset.onclick = function () {
     var overlay = document.createElement("div");
-    overlay.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; box-sizing:border-box;";
+    overlay.style.cssText =
+      "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; box-sizing:border-box;";
 
     overlay.innerHTML =
       '<div style="font-size:24px; margin-bottom:10px;">⚠️</div>' +
-      '<div style="font-weight:800; font-size:14px; color:#c62828; margin-bottom:5px;">RESET ' + activeEditMode.toUpperCase() + '?</div>' +
+      '<div style="font-weight:800; font-size:14px; color:#c62828; margin-bottom:5px;">RESET ' +
+      activeEditMode.toUpperCase() +
+      "?</div>" +
       '<div style="font-size:11px; color:#546e7a; margin-bottom:15px;">This will return this specific profile to its default layout.</div>' +
       '<div style="display:flex; gap:10px; width:100%; justify-content:center;">' +
       '<button id="btnConfReset" class="btn-platinum-config delete" style="width:auto; padding:8px 16px; color:#c62828;">YES, RESET</button>' +
       '<button id="btnCancReset" class="btn-platinum-config" style="width:auto; padding:8px 16px;">CANCEL</button>' +
-      '</div>';
+      "</div>";
 
     card.appendChild(overlay);
 
-    document.getElementById("btnCancReset").onclick = function () { overlay.remove(); };
+    document.getElementById("btnCancReset").onclick = function () {
+      overlay.remove();
+    };
 
     document.getElementById("btnConfReset").onclick = function () {
       // Use Global Constant
@@ -9655,13 +9995,16 @@ function showInterfaceConfig() {
   btnSave.onclick = function () {
     userSettings.workflowMaps = JSON.parse(JSON.stringify(localMaps));
 
-    if (activeEditMode === currentWorkflowMode || (activeEditMode === 'default' && currentWorkflowMode !== 'draft' && currentWorkflowMode !== 'review')) {
+    if (
+      activeEditMode === currentWorkflowMode ||
+      (activeEditMode === "default" && currentWorkflowMode !== "draft" && currentWorkflowMode !== "review")
+    ) {
       // Update live toolOrder if we just edited the currently active profile
       userSettings.toolOrder = userSettings.workflowMaps[activeEditMode];
 
       var newPages = {};
       userSettings.toolOrder.forEach(function (key, index) {
-        newPages[key] = (index < 4) ? 1 : 2;
+        newPages[key] = index < 4 ? 1 : 2;
         userSettings.visibleButtons[key] = true;
       });
 
@@ -9696,7 +10039,9 @@ function showInterfaceConfig() {
     activeEditMode = this.value;
     renderList();
     content.style.opacity = "0.5";
-    setTimeout(function () { content.style.opacity = "1"; }, 200);
+    setTimeout(function () {
+      content.style.opacity = "1";
+    }, 200);
   };
 
   // Initial Render Call
@@ -9768,11 +10113,7 @@ function getRedlineHtml(oldStr, newStr) {
 
   // 1. Find Common Prefix
   var start = 0;
-  while (
-    start < oldStr.length &&
-    start < newStr.length &&
-    oldStr[start] === newStr[start]
-  ) {
+  while (start < oldStr.length && start < newStr.length && oldStr[start] === newStr[start]) {
     start++;
   }
   // Backtrack to the last space to avoid cutting words in half (e.g. "app|le" vs "app|lication")
@@ -9783,20 +10124,12 @@ function getRedlineHtml(oldStr, newStr) {
   // 2. Find Common Suffix
   var endOld = oldStr.length;
   var endNew = newStr.length;
-  while (
-    endOld > start &&
-    endNew > start &&
-    oldStr[endOld - 1] === newStr[endNew - 1]
-  ) {
+  while (endOld > start && endNew > start && oldStr[endOld - 1] === newStr[endNew - 1]) {
     endOld--;
     endNew--;
   }
   // Forward track to next space to avoid cutting words
-  while (
-    endOld < oldStr.length &&
-    oldStr[endOld] !== " " &&
-    newStr[endNew] !== " "
-  ) {
+  while (endOld < oldStr.length && oldStr[endOld] !== " " && newStr[endNew] !== " ") {
     endOld++;
     endNew++;
   }
@@ -9914,7 +10247,8 @@ function showPlaybookSourceManager() {
 
   // 4. FOOTER BUTTONS
   var footerDiv = document.createElement("div");
-  footerDiv.style.cssText = "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
+  footerDiv.style.cssText =
+    "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
 
   var btnCancel = document.createElement("button");
   btnCancel.className = "btn-platinum-config";
@@ -9943,8 +10277,7 @@ function showPlaybookSourceManager() {
   var chkHide = document.getElementById("chkHideMatches");
   chkHide.checked = userSettings.hideMatches || false;
 
-  if (document.getElementById("pbUrl"))
-    document.getElementById("pbUrl").value = userSettings.playbookUrl || "";
+  if (document.getElementById("pbUrl")) document.getElementById("pbUrl").value = userSettings.playbookUrl || "";
   if (document.getElementById("pbGlobalEmail"))
     document.getElementById("pbGlobalEmail").value = userSettings.approvalEmail || "";
 
@@ -9977,7 +10310,8 @@ function showPlaybookSourceManager() {
 
           if (!Array.isArray(json)) {
             showToast("⚠️ Invalid Playbook: Expected valid JSON Array");
-            document.getElementById("pbStatus").innerHTML = "<span style='color:orange'>⚠️ Invalid Format (Not an Array)</span>";
+            document.getElementById("pbStatus").innerHTML =
+              "<span style='color:orange'>⚠️ Invalid Format (Not an Array)</span>";
             return;
           }
 
@@ -9992,7 +10326,6 @@ function showPlaybookSourceManager() {
 
             if (typeof refreshPlaybookData === "function") refreshPlaybookData();
           });
-
         } catch (err) {
           console.error("JSON Load Error:", err);
           showToast("⚠️ Bad JSON File. Please check format.");
@@ -10040,7 +10373,7 @@ function refreshPlaybookData() {
           saveFeatureData(STORE_PLAYBOOKS, oldData); // Move to DB
           localStorage.removeItem("colgate_local_playbook"); // Delete Old
           console.log("📦 Playbook Migrated.");
-        } catch (e) { }
+        } catch (e) {}
       }
 
       // 3. Trigger UI Refresh (Since this is async)
@@ -10094,12 +10427,15 @@ function showPlaybookInterface(preSelectedType) {
   out.appendChild(header);
 
   // 3. APPROVAL STATUS BAR (Squared & Compressed)
-  var pending = approvalQueue.filter(function (x) { return x.status === "Pending"; }).length;
+  var pending = approvalQueue.filter(function (x) {
+    return x.status === "Pending";
+  }).length;
 
   var bellBtn = document.createElement("button");
   bellBtn.className = "btn-action";
   // Custom Override for Square/Compact
-  var baseStatusStyle = "width: 100%; padding: 6px; cursor: pointer; border-radius: 0px; font-size: 11px; display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; border: 1px solid;";
+  var baseStatusStyle =
+    "width: 100%; padding: 6px; cursor: pointer; border-radius: 0px; font-size: 11px; display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px; border: 1px solid;";
 
   if (pending > 0) {
     bellBtn.innerHTML = `<span>🔔</span> <strong>${pending} PENDING APPROVAL(S)</strong>`;
@@ -10115,12 +10451,14 @@ function showPlaybookInterface(preSelectedType) {
   var scanCard = document.createElement("div");
   scanCard.className = "tool-box slide-in";
   // Compact box styles: 0px radius, tighter padding (10px)
-  scanCard.style.cssText = "border-left: 5px solid #d32f2f; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px; margin-bottom: 12px; border-radius: 0px; border: 1px solid #e0e0e0; border-left-width: 5px;";
+  scanCard.style.cssText =
+    "border-left: 5px solid #d32f2f; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px; margin-bottom: 12px; border-radius: 0px; border: 1px solid #e0e0e0; border-left-width: 5px;";
 
   // Title
   var scanHead = document.createElement("div");
   scanHead.innerHTML = "🔍 COMPLIANCE SCAN";
-  scanHead.style.cssText = "font-weight:800; color:#b71c1c; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #f5f5f5;";
+  scanHead.style.cssText =
+    "font-weight:800; color:#b71c1c; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #f5f5f5;";
   scanCard.appendChild(scanHead);
 
   // Filter Row (Compact)
@@ -10140,30 +10478,38 @@ function showPlaybookInterface(preSelectedType) {
   typeSelect.id = "agreementType";
   typeSelect.className = "audience-select";
   // Compact Select: Height 22px
-  typeSelect.style.cssText = "margin-bottom: 0; padding: 0 4px; height: 22px; font-size: 11px; border-radius: 0px; flex: 1; border: 1px solid #d1d5db; background-color: #f9fafb;";
+  typeSelect.style.cssText =
+    "margin-bottom: 0; padding: 0 4px; height: 22px; font-size: 11px; border-radius: 0px; flex: 1; border: 1px solid #d1d5db; background-color: #f9fafb;";
 
   ["NDA", "Services", "JDA", "Other"].forEach(function (t) {
-    var o = document.createElement("option"); o.value = t; o.text = t === "Other" ? "All Types" : t;
+    var o = document.createElement("option");
+    o.value = t;
+    o.text = t === "Other" ? "All Types" : t;
     typeSelect.appendChild(o);
   });
   typeSelect.value = window.currentPlaybookType;
-  typeSelect.onchange = function () { window.currentPlaybookType = this.value; render(); };
+  typeSelect.onchange = function () {
+    window.currentPlaybookType = this.value;
+    render();
+  };
   filterRow.appendChild(typeSelect);
   scanCard.appendChild(filterRow);
 
   // List Header (Grey Bar)
   var listHeader = document.createElement("div");
-  listHeader.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:0px; background:#eceff1; padding:4px 8px; border:1px solid #e0e0e0; border-bottom:none;";
+  listHeader.style.cssText =
+    "display:flex; justify-content:space-between; align-items:center; margin-bottom:0px; background:#eceff1; padding:4px 8px; border:1px solid #e0e0e0; border-bottom:none;";
   listHeader.innerHTML = `<span style="font-size:9px; font-weight:700; color:#455a64;">ACTIVE CLAUSES</span>`;
 
   // Select All Checkbox
   var checkAllLabel = document.createElement("label");
-  checkAllLabel.style.cssText = "font-size: 9px; color: #1565c0; cursor: pointer; font-weight: 700; display:flex; align-items:center;";
+  checkAllLabel.style.cssText =
+    "font-size: 9px; color: #1565c0; cursor: pointer; font-weight: 700; display:flex; align-items:center;";
   var checkAllInput = document.createElement("input");
   checkAllInput.type = "checkbox";
   checkAllInput.style.marginRight = "4px";
   checkAllInput.onclick = function (e) {
-    document.querySelectorAll(".playbook-check").forEach(b => b.checked = e.target.checked);
+    document.querySelectorAll(".playbook-check").forEach((b) => (b.checked = e.target.checked));
     updatePlaybookButtonState();
   };
   checkAllLabel.appendChild(checkAllInput);
@@ -10174,10 +10520,13 @@ function showPlaybookInterface(preSelectedType) {
   // Scroll Box (Squared & Compact)
   var scrollBox = document.createElement("div");
   scrollBox.id = "playbook-scroll-area";
-  scrollBox.style.cssText = "height: 150px; overflow-y: auto; border: 1px solid #e0e0e0; background: #fff; border-radius: 0px; margin-bottom: 8px;";
+  scrollBox.style.cssText =
+    "height: 150px; overflow-y: auto; border: 1px solid #e0e0e0; background: #fff; border-radius: 0px; margin-bottom: 8px;";
   scanCard.appendChild(scrollBox);
 
-  function render() { renderPlaybookChecklist(typeSelect.value, scrollBox); }
+  function render() {
+    renderPlaybookChecklist(typeSelect.value, scrollBox);
+  }
   render();
 
   // Buttons (Updated to TRUE Platinum Aesthetic)
@@ -10216,8 +10565,14 @@ function showPlaybookInterface(preSelectedType) {
   var btnEmailNew = document.createElement("button");
   btnEmailNew.style.cssText = btnStyle + "color: #546e7a;";
   btnEmailNew.innerHTML = "✉️ DRAFT EMAIL";
-  btnEmailNew.onmouseover = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)"; this.style.color = "#1565c0"; };
-  btnEmailNew.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)"; this.style.color = "#546e7a"; };
+  btnEmailNew.onmouseover = function () {
+    this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)";
+    this.style.color = "#1565c0";
+  };
+  btnEmailNew.onmouseout = function () {
+    this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)";
+    this.style.color = "#546e7a";
+  };
   btnEmailNew.onclick = runAiEmailScanner;
   scanCard.appendChild(btnEmailNew);
 
@@ -10226,22 +10581,28 @@ function showPlaybookInterface(preSelectedType) {
   // 5. CLAUSE LIBRARY (Squared & Compact)
   var libCard = document.createElement("div");
   libCard.className = "tool-box slide-in";
-  libCard.style.cssText = "border-left: 5px solid #1565c0; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px; margin-bottom: 10px; border-radius: 0px; border: 1px solid #e0e0e0; border-left-width: 5px;";
+  libCard.style.cssText =
+    "border-left: 5px solid #1565c0; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px; margin-bottom: 10px; border-radius: 0px; border: 1px solid #e0e0e0; border-left-width: 5px;";
 
   var libHead = document.createElement("div");
   libHead.innerHTML = "📝 CLAUSE LIBRARY";
-  libHead.style.cssText = "font-weight:800; color:#0d47a1; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #f5f5f5;";
+  libHead.style.cssText =
+    "font-weight:800; color:#0d47a1; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #f5f5f5;";
   libCard.appendChild(libHead);
 
   var clauseSelect = document.createElement("select");
   clauseSelect.className = "audience-select";
-  clauseSelect.style.cssText = "width: 100%; margin-bottom: 6px; height: 26px; font-size: 11px; border-radius: 0px; padding: 2px; border:1px solid #cfd8dc;";
+  clauseSelect.style.cssText =
+    "width: 100%; margin-bottom: 6px; height: 26px; font-size: 11px; border-radius: 0px; padding: 2px; border:1px solid #cfd8dc;";
 
   if (loadedPlaybook.length === 0) {
-    var opt = document.createElement("option"); opt.innerText = "No clauses loaded"; clauseSelect.appendChild(opt);
+    var opt = document.createElement("option");
+    opt.innerText = "No clauses loaded";
+    clauseSelect.appendChild(opt);
   } else {
     loadedPlaybook.forEach(function (c, idx) {
-      var opt = document.createElement("option"); opt.value = idx;
+      var opt = document.createElement("option");
+      opt.value = idx;
       var lock = c.approvalRequired ? "🔒 " : "";
       opt.innerText = lock + c.name;
       clauseSelect.appendChild(opt);
@@ -10252,8 +10613,12 @@ function showPlaybookInterface(preSelectedType) {
   var btnInsert = document.createElement("button");
   btnInsert.style.cssText = btnStyle + "color: #1565c0; margin-top: 0;";
   btnInsert.innerHTML = "INSERT SELECTED";
-  btnInsert.onmouseover = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)"; };
-  btnInsert.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)"; };
+  btnInsert.onmouseover = function () {
+    this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)";
+  };
+  btnInsert.onmouseout = function () {
+    this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)";
+  };
   btnInsert.onclick = function () {
     var idx = clauseSelect.value;
     var selectedClause = loadedPlaybook[idx];
@@ -10276,8 +10641,14 @@ function showPlaybookInterface(preSelectedType) {
                 padding: 10px;
                 box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.08);
                 `;
-  btnHome.onmouseover = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)"; this.style.color = "#1565c0"; };
-  btnHome.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)"; this.style.color = "#546e7a"; };
+  btnHome.onmouseover = function () {
+    this.style.background = "linear-gradient(to bottom, #ffffff 0%, #e3f2fd 100%)";
+    this.style.color = "#1565c0";
+  };
+  btnHome.onmouseout = function () {
+    this.style.background = "linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%)";
+    this.style.color = "#546e7a";
+  };
   btnHome.onclick = showHome;
   out.appendChild(btnHome);
 }
@@ -10290,26 +10661,23 @@ function showPlaybookInterface(preSelectedType) {
 function renderPlaybookChecklist(filterType, container) {
   container.innerHTML = "";
   if (loadedPlaybook.length === 0) {
-    container.innerHTML = "<div style='padding:15px; color:#999; text-align:center; font-size:11px;'>No clauses found.</div>";
+    container.innerHTML =
+      "<div style='padding:15px; color:#999; text-align:center; font-size:11px;'>No clauses found.</div>";
     return;
   }
 
   loadedPlaybook.forEach(function (clause, idx) {
     var shouldShow = false;
     if (filterType === "Other") shouldShow = true;
-    else if (
-      !clause.types ||
-      clause.types.includes("All") ||
-      clause.types.includes(filterType)
-    )
-      shouldShow = true;
+    else if (!clause.types || clause.types.includes("All") || clause.types.includes(filterType)) shouldShow = true;
 
     if (shouldShow) {
       var row = document.createElement("div");
       row.className = "playbook-item slide-in";
 
       // COMPRESSED STYLING
-      row.style.cssText = "display: flex; align-items: center; padding: 4px 8px; border-bottom: 1px solid #f0f0f0; min-height: 24px;";
+      row.style.cssText =
+        "display: flex; align-items: center; padding: 4px 8px; border-bottom: 1px solid #f0f0f0; min-height: 24px;";
 
       var chk = document.createElement("input");
       chk.type = "checkbox";
@@ -10321,7 +10689,8 @@ function renderPlaybookChecklist(filterType, container) {
       chk.onchange = updatePlaybookButtonState;
 
       var nameLabel = document.createElement("label");
-      nameLabel.style.cssText = "flex: 1; font-size: 11px; cursor: pointer; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;";
+      nameLabel.style.cssText =
+        "flex: 1; font-size: 11px; cursor: pointer; color: #333; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;";
 
       // Add Lock Icon if needed
       var prefix = clause.approvalRequired ? "🔒 " : "";
@@ -10457,11 +10826,7 @@ function renderPlaybookResults(items) {
 
     // --- APPROVAL STATUS CHECK ---
     var approvedRecord = approvalQueue.find(function (r) {
-      return (
-        sourceClause &&
-        r.clause === sourceClause.name &&
-        r.status === "Approved"
-      );
+      return sourceClause && r.clause === sourceClause.name && r.status === "Approved";
     });
 
     // --- DESIGN THEME ---
@@ -10537,15 +10902,16 @@ function renderPlaybookResults(items) {
                     </div>
                   </div>
 
-                  ${item.status !== "Missing"
-        ? `<div style="margin-bottom:15px; padding-top:15px; border-top: 3px solid #37474f;">
+                  ${
+                    item.status !== "Missing"
+                      ? `<div style="margin-bottom:15px; padding-top:15px; border-top: 3px solid #37474f;">
                     <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#37474f; margin-bottom:6px; letter-spacing:0.5px;">Current Document Text</div>
                     <div style="background:#f5f5f5; border-left:3px solid #bdbdbd; padding:12px; border-radius:0px; font-family:'Georgia', serif; font-size:13px; color:#424242; line-height:1.5;">"${item.doc_text || "Found implicitly."}"</div>
                 </div>`
-        : `<div style="margin-bottom:15px; padding-top:15px; border-top: 3px solid #c62828;">
+                      : `<div style="margin-bottom:15px; padding-top:15px; border-top: 3px solid #c62828;">
                     <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#c62828;">⚠️ Clause Missing from Document</div>
                 </div>`
-      }
+                  }
 
                   ${insightHtml}
 
@@ -10577,8 +10943,8 @@ function renderPlaybookResults(items) {
 
     var actionWrapper = document.getElementById(`action_wrapper_${index}`);
 
-
-    var actionBtnStyle = "flex: 1; background: linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%) !important; color: #1565c0 !important; border: 1px solid #b0bec5 !important; border-top: 1px solid #cfd8dc !important; font-weight: 800 !important; font-size: 11px !important; padding: 10px 14px !important; border-radius: 0px !important; cursor: pointer !important; transition: all 0.2s ease; text-transform: uppercase !important; letter-spacing: 0.5px !important; box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.08) !important; text-shadow: 0 1px 0 rgba(255,255,255,0.8) !important; display: flex; align-items: center; justify-content: center; gap: 6px;";
+    var actionBtnStyle =
+      "flex: 1; background: linear-gradient(to bottom, #f7f9fa 0%, #dce3e8 100%) !important; color: #1565c0 !important; border: 1px solid #b0bec5 !important; border-top: 1px solid #cfd8dc !important; font-weight: 800 !important; font-size: 11px !important; padding: 10px 14px !important; border-radius: 0px !important; cursor: pointer !important; transition: all 0.2s ease; text-transform: uppercase !important; letter-spacing: 0.5px !important; box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0,0,0,0.08) !important; text-shadow: 0 1px 0 rgba(255,255,255,0.8) !important; display: flex; align-items: center; justify-content: center; gap: 6px;";
     // ==========================================
     // START: hoverOn
     // ==========================================
@@ -10609,8 +10975,7 @@ function renderPlaybookResults(items) {
       var btnLoc = document.createElement("button");
       btnLoc.innerHTML = "<span>👁️</span> Locate in Doc";
       // btnLoc.className = "btn-action"; // Removed to avoid conflict
-      btnLoc.style.cssText =
-        actionBtnStyle + " width: 100%; margin-bottom: 10px;";
+      btnLoc.style.cssText = actionBtnStyle + " width: 100%; margin-bottom: 10px;";
       btnLoc.onmouseover = function () {
         hoverOn(this);
       };
@@ -10722,18 +11087,10 @@ function renderPlaybookResults(items) {
         var isRestricted = isLocked && !approvedRecord && !isStd;
 
         // COLORS: Gold for Standard, Red for Locked, Gray/Blue for Regular
-        var accentColor = isStd
-          ? "#fbc02d"
-          : isRestricted
-            ? "#d32f2f"
-            : "#90a4ae";
+        var accentColor = isStd ? "#fbc02d" : isRestricted ? "#d32f2f" : "#90a4ae";
         var bgColor = isStd ? "#fffde7" : "#ffffff";
         var borderColor = isStd ? "#fdd835" : "#e0e0e0";
-        var titleColor = isStd
-          ? "#f9a825"
-          : isRestricted
-            ? "#c62828"
-            : "#546e7a";
+        var titleColor = isStd ? "#f9a825" : isRestricted ? "#c62828" : "#546e7a";
 
         // --- 2. CARD CONTAINER STYLE ---
         btn.style.cssText = `
@@ -10833,13 +11190,7 @@ function renderPlaybookResults(items) {
           if (isLocked && !approvedRecord && !fb.isStandard) {
             var initialComment = fb.justification || "Standard term applied.";
             if (typeof checkApprovalAndExecute === "function") {
-              checkApprovalAndExecute(
-                sourceClause,
-                fb.text,
-                item.doc_text,
-                initialComment,
-                btn,
-              );
+              checkApprovalAndExecute(sourceClause, fb.text, item.doc_text, initialComment, btn);
             }
             return;
           }
@@ -10912,37 +11263,34 @@ function renderPlaybookResults(items) {
                       "<span style='color:#1565c0; font-size:9px; background:#e3f2fd; padding:3px 6px; font-weight:700; letter-spacing:0.5px;'>✨ AI GENERATED</span>";
                   })
                   .catch(function (e) {
-                    txtBox.value =
-                      "Colgate requires standard terms for compliance.";
+                    txtBox.value = "Colgate requires standard terms for compliance.";
                     badge.innerHTML =
                       "<span style='color:#757575; font-size:9px; background:#eee; padding:3px 6px;'>⚠️ FALLBACK</span>";
                   });
-              } catch (e) { }
+              } catch (e) {}
             }
 
-            document.getElementById(`btn_cancel_${index}`).onclick =
-              function () {
-                // Restore the other fallback buttons by removing the inline style
-                siblings.forEach(function (s) {
-                  if (s !== btn) {
-                    s.style.display = ""; // This removes the inline "display: none !important"
-                  }
-                });
-                editArea.remove();
-              };
+            document.getElementById(`btn_cancel_${index}`).onclick = function () {
+              // Restore the other fallback buttons by removing the inline style
+              siblings.forEach(function (s) {
+                if (s !== btn) {
+                  s.style.display = ""; // This removes the inline "display: none !important"
+                }
+              });
+              editArea.remove();
+            };
 
-            document.getElementById(`btn_apply_${index}`).onclick =
-              function () {
-                var finalComment = txtBox.value;
-                Word.run(function (context) {
-                  var selection = context.document.getSelection();
-                  selection.insertComment(finalComment);
-                  return context.sync();
-                }).then(function () {
-                  editArea.innerHTML =
-                    "<div style='color:#2e7d32; font-weight:bold; text-align:center; padding:10px;'>✅ Comment Attached</div>";
-                });
-              };
+            document.getElementById(`btn_apply_${index}`).onclick = function () {
+              var finalComment = txtBox.value;
+              Word.run(function (context) {
+                var selection = context.document.getSelection();
+                selection.insertComment(finalComment);
+                return context.sync();
+              }).then(function () {
+                editArea.innerHTML =
+                  "<div style='color:#2e7d32; font-weight:bold; text-align:center; padding:10px;'>✅ Comment Attached</div>";
+              });
+            };
           };
           // ==========================================
           // END: executeInsertion
@@ -11010,9 +11358,7 @@ function performInsertion(newText, targetText, commentText, btnElement, exactMat
 
     // B. FALLBACK: If not found, use Selection
     if (!rangeToReplace) {
-      console.log(
-        "Target text not found via SmartMatch. Falling back to cursor.",
-      );
+      console.log("Target text not found via SmartMatch. Falling back to cursor.");
       rangeToReplace = context.document.getSelection();
     } else {
       // If we found it via search, expand to the full paragraph to ensure a clean swap
@@ -11050,11 +11396,7 @@ function performInsertion(newText, targetText, commentText, btnElement, exactMat
       finalRange.select();
 
       // F. ADD JUSTIFICATION COMMENT (If passed immediately)
-      if (
-        commentText &&
-        typeof userSettings !== "undefined" &&
-        userSettings.enableJustificationComments
-      ) {
+      if (commentText && typeof userSettings !== "undefined" && userSettings.enableJustificationComments) {
         finalRange.insertComment(commentText);
       }
     }
@@ -11092,11 +11434,13 @@ function promptForApproval(name, text, defaultEmail) {
     // 2. Create the Modal Overlay
     var overlay = document.createElement("div");
     overlay.id = "approvalOverlay";
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
     var dialog = document.createElement("div");
     dialog.className = "tool-box slide-in";
-    dialog.style.cssText = "background:white; width:320px; padding:0; border-left:5px solid #d32f2f; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px; overflow:hidden;";
+    dialog.style.cssText =
+      "background:white; width:320px; padding:0; border-left:5px solid #d32f2f; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px; overflow:hidden;";
 
     // --- CONTENT ---
     dialog.innerHTML = `
@@ -11108,7 +11452,7 @@ function promptForApproval(name, text, defaultEmail) {
             <label class="tool-label">Select Approver:</label>
             <select id="selApprover" class="audience-select" style="width:100%; margin-bottom:10px; border-color:#d32f2f;">
                 <option value="">-- Select Saved Person --</option>
-                ${savedReqs.map(r => `<option value="${r.email}">${r.name} (${r.email})</option>`).join("")}
+                ${savedReqs.map((r) => `<option value="${r.email}">${r.name} (${r.email})</option>`).join("")}
                 <option value="add_new" style="font-weight:bold; color:#1565c0;">➕ ADD NEW PERSON...</option>
             </select>
             <div id="manualApproverBox" class="hidden" style="background:#f9f9f9; padding:10px; border:1px dashed #ccc; margin-bottom:10px;">
@@ -11141,7 +11485,10 @@ function promptForApproval(name, text, defaultEmail) {
 
     if (defaultEmail) {
       for (var i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === defaultEmail) { sel.selectedIndex = i; break; }
+        if (sel.options[i].value === defaultEmail) {
+          sel.selectedIndex = i;
+          break;
+        }
       }
     }
 
@@ -11154,14 +11501,20 @@ function promptForApproval(name, text, defaultEmail) {
     document.getElementById("btnSaveNewApprover").onclick = function () {
       var n = nameInp.value.trim();
       var e = emailInp.value.trim();
-      if (!n || !e) { showToast("⚠️ Name and Email required"); return; }
+      if (!n || !e) {
+        showToast("⚠️ Name and Email required");
+        return;
+      }
 
       savedReqs.push({ id: String(Date.now()), name: n, email: e });
 
       // SAVE TO DB INSTEAD OF LOCALSTORAGE
       saveFeatureData(STORE_REQUESTERS, savedReqs).then(() => {
-        var opts = `<option value="">-- Select Saved Person --</option>` +
-          savedReqs.map(r => `<option value="${r.email}" ${r.email === e ? "selected" : ""}>${r.name} (${r.email})</option>`).join("") +
+        var opts =
+          `<option value="">-- Select Saved Person --</option>` +
+          savedReqs
+            .map((r) => `<option value="${r.email}" ${r.email === e ? "selected" : ""}>${r.name} (${r.email})</option>`)
+            .join("") +
           `<option value="add_new" style="font-weight:bold; color:#1565c0;">➕ ADD NEW PERSON...</option>`;
         sel.innerHTML = opts;
         manualBox.classList.add("hidden");
@@ -11173,21 +11526,44 @@ function promptForApproval(name, text, defaultEmail) {
     function handleSubmit(isEmailMode) {
       var finalEmail = sel.value;
       var reason = document.getElementById("approvalReason").value;
-      if (!finalEmail || finalEmail === "add_new") { sel.style.borderColor = "red"; showToast("⚠️ Select an Approver"); return; }
-      if (!reason.trim()) { document.getElementById("approvalReason").style.borderColor = "red"; showToast("⚠️ Reason required"); return; }
+      if (!finalEmail || finalEmail === "add_new") {
+        sel.style.borderColor = "red";
+        showToast("⚠️ Select an Approver");
+        return;
+      }
+      if (!reason.trim()) {
+        document.getElementById("approvalReason").style.borderColor = "red";
+        showToast("⚠️ Reason required");
+        return;
+      }
 
       overlay.remove();
       approvalQueue.push({
-        id: Date.now(), clause: name, text: text, reason: reason, approver: finalEmail, timestamp: new Date().toLocaleString(), status: "Pending",
+        id: Date.now(),
+        clause: name,
+        text: text,
+        reason: reason,
+        approver: finalEmail,
+        timestamp: new Date().toLocaleString(),
+        status: "Pending",
       });
       saveApprovalQueue();
       if (isEmailMode) renderApprovalNextSteps(name, text, finalEmail, reason);
-      else { showToast("✅ Request Logged"); showApprovalDashboard(); }
+      else {
+        showToast("✅ Request Logged");
+        showApprovalDashboard();
+      }
     }
 
-    document.getElementById("btnSubmitAndEmail").onclick = function () { handleSubmit(true); };
-    document.getElementById("btnLogOnly").onclick = function () { handleSubmit(false); };
-    document.getElementById("btnCancelApproval").onclick = function () { overlay.remove(); };
+    document.getElementById("btnSubmitAndEmail").onclick = function () {
+      handleSubmit(true);
+    };
+    document.getElementById("btnLogOnly").onclick = function () {
+      handleSubmit(false);
+    };
+    document.getElementById("btnCancelApproval").onclick = function () {
+      overlay.remove();
+    };
   });
 }
 // ==========================================
@@ -11197,7 +11573,8 @@ function renderApprovalNextSteps(name, text, email, reason) {
   // 1. Generate Default Content
   var defaultSubject = "APPROVAL REQUEST: " + name;
   var safeText = text.length > 800 ? text.substring(0, 800) + "... [TRUNCATED]" : text;
-  var defaultBody = "Hi,\n\nI need approval to use the restricted clause: " +
+  var defaultBody =
+    "Hi,\n\nI need approval to use the restricted clause: " +
     name +
     ".\n\nPROPOSED TEXT:\n" +
     safeText +
@@ -11257,10 +11634,14 @@ function renderApprovalNextSteps(name, text, email, reason) {
     var body = document.getElementById("appEmailBody").value;
 
     // 2. Construct Gmail URL dynamically
-    var gmailUrl = "https://mail.google.com/mail/?view=cm&fs=1" +
-      "&to=" + encodeURIComponent(email) +
-      "&su=" + encodeURIComponent(subj) +
-      "&body=" + encodeURIComponent(body);
+    var gmailUrl =
+      "https://mail.google.com/mail/?view=cm&fs=1" +
+      "&to=" +
+      encodeURIComponent(email) +
+      "&su=" +
+      encodeURIComponent(subj) +
+      "&body=" +
+      encodeURIComponent(body);
 
     // 3. Open
     if (Office.context.ui && Office.context.ui.openBrowserWindow) {
@@ -11320,18 +11701,9 @@ function showApprovalDashboard() {
     var card = document.createElement("div");
     card.className =
       "approval-card approval-item-card " +
-      (req.status === "Approved"
-        ? "approved"
-        : req.status === "Rejected"
-          ? "rejected"
-          : "");
+      (req.status === "Approved" ? "approved" : req.status === "Rejected" ? "rejected" : "");
 
-    var statusColor =
-      req.status === "Pending"
-        ? "#f57f17"
-        : req.status === "Approved"
-          ? "#2e7d32"
-          : "#c62828";
+    var statusColor = req.status === "Pending" ? "#f57f17" : req.status === "Approved" ? "#2e7d32" : "#c62828";
 
     // Use the saved timestamp
     var displayDate = req.timestamp;
@@ -11356,8 +11728,14 @@ function showApprovalDashboard() {
               box-shadow: 0 2px 8px rgba(0,0,0,0.05);
               transition: transform 0.2s;
               `;
-    card.onmouseover = function () { this.style.transform = "translateY(-2px)"; this.style.boxShadow = "0 5px 15px rgba(0,0,0,0.1)"; };
-    card.onmouseout = function () { this.style.transform = "none"; this.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)"; };
+    card.onmouseover = function () {
+      this.style.transform = "translateY(-2px)";
+      this.style.boxShadow = "0 5px 15px rgba(0,0,0,0.1)";
+    };
+    card.onmouseout = function () {
+      this.style.transform = "none";
+      this.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+    };
 
     card.innerHTML = `
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed #eee;">
@@ -11418,8 +11796,14 @@ function showApprovalDashboard() {
           overlay.remove();
         };
 
-        document.getElementById("btnYesApprove").onmouseover = function () { this.style.background = "#66bb6a"; this.style.boxShadow = "0 3px 6px rgba(0,0,0,0.2)"; };
-        document.getElementById("btnYesApprove").onmouseout = function () { this.style.background = "linear-gradient(to bottom, #43a047 0%, #2e7d32 100%)"; this.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)"; };
+        document.getElementById("btnYesApprove").onmouseover = function () {
+          this.style.background = "#66bb6a";
+          this.style.boxShadow = "0 3px 6px rgba(0,0,0,0.2)";
+        };
+        document.getElementById("btnYesApprove").onmouseout = function () {
+          this.style.background = "linear-gradient(to bottom, #43a047 0%, #2e7d32 100%)";
+          this.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.2)";
+        };
 
         document.getElementById("btnYesApprove").onclick = function () {
           overlay.remove();
@@ -11572,9 +11956,7 @@ function saveApprovalQueue() {
 
   Office.context.document.settings.saveAsync(function (asyncResult) {
     if (asyncResult.status === Office.AsyncResultStatus.Failed) {
-      console.error(
-        "Failed to save approvals to doc: " + asyncResult.error.message,
-      );
+      console.error("Failed to save approvals to doc: " + asyncResult.error.message);
     } else {
       console.log("✅ Approvals synced to document settings.");
     }
@@ -11584,13 +11966,7 @@ function saveApprovalQueue() {
 // END: saveApprovalQueue
 // ==========================================
 // 7. ENFORCEMENT & EXECUTION
-function checkApprovalAndExecute(
-  clause,
-  textToInsert,
-  textToReplace,
-  comment,
-  btnElement,
-) {
+function checkApprovalAndExecute(clause, textToInsert, textToReplace, comment, btnElement) {
   if (!clause.approvalRequired) {
     performInsertion(textToInsert, textToReplace, comment, btnElement);
     return;
@@ -11605,9 +11981,7 @@ function checkApprovalAndExecute(
     showToast("✅ Approved Action Executed");
   } else {
     var manager =
-      clause.approvalEmail && clause.approvalEmail.length > 3
-        ? clause.approvalEmail
-        : userSettings.approvalEmail;
+      clause.approvalEmail && clause.approvalEmail.length > 3 ? clause.approvalEmail : userSettings.approvalEmail;
     if (!manager || manager.length < 3) manager = "manager@colgate.com";
     promptForApproval(clause.name, textToInsert, manager);
   }
@@ -11628,36 +12002,30 @@ function checkFooterConsistency() {
     sections.items.forEach(function (section, index) {
       // Primary
       try {
-        var primary = section.getFooter
-          ? section.getFooter("Primary")
-          : section.footers.getItem("Primary");
+        var primary = section.getFooter ? section.getFooter("Primary") : section.footers.getItem("Primary");
         var r1 = primary.getRange();
         // CHANGE: Get HTML instead of loading text
         var h1 = r1.getHtml();
         footerRanges.push({ type: "Primary", section: index + 1, html: h1 });
-      } catch (e) { }
+      } catch (e) {}
 
       // FirstPage
       try {
-        var first = section.getFooter
-          ? section.getFooter("FirstPage")
-          : section.footers.getItem("FirstPage");
+        var first = section.getFooter ? section.getFooter("FirstPage") : section.footers.getItem("FirstPage");
         var r2 = first.getRange();
         // CHANGE: Get HTML instead of loading text
         var h2 = r2.getHtml();
         footerRanges.push({ type: "FirstPage", section: index + 1, html: h2 });
-      } catch (e) { }
+      } catch (e) {}
 
       // EvenPages
       try {
-        var even = section.getFooter
-          ? section.getFooter("EvenPages")
-          : section.footers.getItem("EvenPages");
+        var even = section.getFooter ? section.getFooter("EvenPages") : section.footers.getItem("EvenPages");
         var r3 = even.getRange();
         // CHANGE: Get HTML instead of loading text
         var h3 = r3.getHtml();
         footerRanges.push({ type: "EvenPages", section: index + 1, html: h3 });
-      } catch (e) { }
+      } catch (e) {}
     });
 
     // 2. Execute the queued loads
@@ -11682,16 +12050,10 @@ function checkFooterConsistency() {
 
     // A. Find Master Reference (Priority: Section 1 FirstPage -> Section 1 Primary)
     var p1First = footerRanges.find(function (r) {
-      return (
-        r.section === 1 &&
-        r.type === "FirstPage" &&
-        getText(r).trim().length > 0
-      );
+      return r.section === 1 && r.type === "FirstPage" && getText(r).trim().length > 0;
     });
     var p1Prim = footerRanges.find(function (r) {
-      return (
-        r.section === 1 && r.type === "Primary" && getText(r).trim().length > 0
-      );
+      return r.section === 1 && r.type === "Primary" && getText(r).trim().length > 0;
     });
 
     var masterText = p1First ? getText(p1First) : p1Prim ? getText(p1Prim) : "";
@@ -11802,12 +12164,24 @@ function showResetConfirmationModal() {
 
     // 3. Reset Button Visibility & Pages
     userSettings.visibleButtons = {
-      error: true, legal: true, summary: true, playbook: true,
-      chat: true, template: true, compare: true, email: true
+      error: true,
+      legal: true,
+      summary: true,
+      playbook: true,
+      chat: true,
+      template: true,
+      compare: true,
+      email: true,
     };
     userSettings.buttonPages = {
-      error: 1, legal: 1, summary: 1, chat: 1,
-      email: 2, template: 2, playbook: 2, compare: 2
+      error: 1,
+      legal: 1,
+      summary: 1,
+      chat: 1,
+      email: 2,
+      template: 2,
+      playbook: 2,
+      compare: 2,
     };
 
     // 4. Force Onboarding Restart
@@ -11816,7 +12190,9 @@ function showResetConfirmationModal() {
     // 5. Save & Reload
     saveCurrentSettings();
     showToast("✅ Interface Reset (Reloading...)");
-    setTimeout(function () { window.location.reload(); }, 500);
+    setTimeout(function () {
+      window.location.reload();
+    }, 500);
   };
 
   // --- 3. SECURE DATA WIPE (Granular Choices) ---
@@ -11825,7 +12201,8 @@ function showResetConfirmationModal() {
 
     var passDialog = document.createElement("div");
     passDialog.className = "tool-box slide-in";
-    passDialog.style.cssText = "background:white; width:300px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px; text-align:left;";
+    passDialog.style.cssText =
+      "background:white; width:300px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px; text-align:left;";
 
     // Step 1: Password Input
     passDialog.innerHTML = `
@@ -11837,9 +12214,13 @@ function showResetConfirmationModal() {
     `;
 
     overlay.appendChild(passDialog);
-    setTimeout(function () { document.getElementById("txtAdminPass").focus(); }, 100);
+    setTimeout(function () {
+      document.getElementById("txtAdminPass").focus();
+    }, 100);
 
-    document.getElementById("btnCancelPass").onclick = function () { overlay.remove(); };
+    document.getElementById("btnCancelPass").onclick = function () {
+      overlay.remove();
+    };
 
     document.getElementById("btnVerifyPass").onclick = function () {
       var pwd = document.getElementById("txtAdminPass").value;
@@ -11890,7 +12271,9 @@ function showResetConfirmationModal() {
             <button id="btnAbortWipe" class="btn-action" style="width:100%; margin-top:10px;">Cancel</button>
         `;
 
-      document.getElementById("btnAbortWipe").onclick = function () { overlay.remove(); };
+      document.getElementById("btnAbortWipe").onclick = function () {
+        overlay.remove();
+      };
 
       document.getElementById("btnExecuteWipe").onclick = function () {
         var btn = this;
@@ -11906,50 +12289,58 @@ function showResetConfirmationModal() {
 
         // 1. Wipe Clause Library
         if (doClauses) {
-          tasks.push(new Promise(resolve => {
-            indexedDB.deleteDatabase("ELI_ClauseDB");
-            localStorage.removeItem("colgate_library");
-            resolve();
-          }));
+          tasks.push(
+            new Promise((resolve) => {
+              indexedDB.deleteDatabase("ELI_ClauseDB");
+              localStorage.removeItem("colgate_library");
+              resolve();
+            }),
+          );
         }
 
         // 2. Wipe Playbooks & Templates
         if (doPlaybooks) {
-          tasks.push(new Promise(resolve => {
-            indexedDB.deleteDatabase("ELI_FeatureDB");
-            localStorage.removeItem("colgate_local_playbook");
-            localStorage.removeItem("colgate_standard_templates");
-            resolve();
-          }));
+          tasks.push(
+            new Promise((resolve) => {
+              indexedDB.deleteDatabase("ELI_FeatureDB");
+              localStorage.removeItem("colgate_local_playbook");
+              localStorage.removeItem("colgate_standard_templates");
+              resolve();
+            }),
+          );
         }
 
         // 3. Wipe Document Files & History
         if (doDocs) {
-          tasks.push(new Promise(resolve => {
-            if (PROMPTS && PROMPTS._DOC_DB_NAME) indexedDB.deleteDatabase(PROMPTS._DOC_DB_NAME);
+          tasks.push(
+            new Promise((resolve) => {
+              if (PROMPTS && PROMPTS._DOC_DB_NAME) indexedDB.deleteDatabase(PROMPTS._DOC_DB_NAME);
 
-            // Clear Word Settings
-            if (typeof Office !== 'undefined' && Office.context && Office.context.document) {
-              var s = Office.context.document.settings;
-              s.remove("colgate_approval_queue");
-              s.remove("eli_version_history");
-              s.remove("AgreementDataDetails");
-              s.remove("eli_doc_id");
-              s.saveAsync(() => resolve());
-            } else {
-              resolve();
-            }
-          }));
+              // Clear Word Settings
+              if (typeof Office !== "undefined" && Office.context && Office.context.document) {
+                var s = Office.context.document.settings;
+                s.remove("colgate_approval_queue");
+                s.remove("eli_version_history");
+                s.remove("AgreementDataDetails");
+                s.remove("eli_doc_id");
+                s.saveAsync(() => resolve());
+              } else {
+                resolve();
+              }
+            }),
+          );
         }
 
         // 4. Wipe User Settings
         if (doSettings) {
-          tasks.push(new Promise(resolve => {
-            localStorage.removeItem("colgate_user_settings");
-            localStorage.removeItem("eli_language");
-            localStorage.removeItem("colgate_saved_requesters");
-            resolve();
-          }));
+          tasks.push(
+            new Promise((resolve) => {
+              localStorage.removeItem("colgate_user_settings");
+              localStorage.removeItem("eli_language");
+              localStorage.removeItem("colgate_saved_requesters");
+              resolve();
+            }),
+          );
         }
 
         Promise.all(tasks).then(() => {
@@ -11967,9 +12358,9 @@ function showResetConfirmationModal() {
 function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
   // 1. Parse Total (Robust)
   // 1. Parse Total (Robust)
-  // Fix: Handle commas, spaces, currency symbols. 
+  // Fix: Handle commas, spaces, currency symbols.
   // We want to find the first valid number in the string.
-  var cleanFee = String(totalFeeValue).replace(/,/g, ''); // Remove commas first
+  var cleanFee = String(totalFeeValue).replace(/,/g, ""); // Remove commas first
   var match = cleanFee.match(/(\d+(\.\d+)?)/); // Find first number sequence
   var totalFee = match ? parseFloat(match[0]) : 0;
   if (isNaN(totalFee)) {
@@ -11979,11 +12370,13 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
 
   // 2. Create Overlay
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; margin:0; padding:0; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px); gap: 15px;";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; margin:0; padding:0; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px); gap: 15px;";
 
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "background:white; width:340px; padding:0; border-radius:0px; box-shadow:0 20px 50px rgba(0,0,0,0.3); border:1px solid #b0bec5; display:flex; flex-direction:column; max-height:90vh;";
+  card.style.cssText =
+    "background:white; width:340px; padding:0; border-radius:0px; box-shadow:0 20px 50px rgba(0,0,0,0.3); border:1px solid #b0bec5; display:flex; flex-direction:column; max-height:90vh;";
 
   // 3. Header
   card.innerHTML = `
@@ -12041,7 +12434,8 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
   if (showVerbatim) {
     var verbatimBox = document.createElement("div");
     verbatimBox.className = "tool-box slide-in";
-    verbatimBox.style.cssText = "background: #fffde7; border: 1px solid #fbc02d; width: 250px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 0px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);";
+    verbatimBox.style.cssText =
+      "background: #fffde7; border: 1px solid #fbc02d; width: 250px; max-height: 90vh; display: flex; flex-direction: column; border-radius: 0px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);";
     verbatimBox.innerHTML = `
                               <div style="background:#fff9c4; padding:10px; font-size:11px; font-weight:700; color:#f57f17; border-bottom:1px solid #fbc02d;">
                                 🤖 AI Detected Text
@@ -12063,19 +12457,22 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
   var currencyCode = "USD";
 
   var currencyMap = {
-    "USD": "$", "EUR": "€", "GBP": "£"
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
   };
 
   function renderRow(prefillAmt, prefillType, prefillDate) {
     var div = document.createElement("div");
     div.className = "pay-row";
-    div.style.cssText = "background:#fcfcfc; border:1px solid #e0e0e0; padding:10px; margin-bottom:8px; position:relative;";
+    div.style.cssText =
+      "background:#fcfcfc; border:1px solid #e0e0e0; padding:10px; margin-bottom:8px; position:relative;";
 
     div.innerHTML = `
                               <div style="display:flex; gap:10px; margin-bottom:8px;">
                                 <div style="flex:1;">
-                                  <label class="tool-label" style="font-size:9px;">Amount (${currentMode === 'percent' ? '%' : currencySymbol})</label>
-                                  <input type="number" class="tool-input pay-amount" style="margin-bottom:0; height:28px;" placeholder="0" value="${prefillAmt || ''}">
+                                  <label class="tool-label" style="font-size:9px;">Amount (${currentMode === "percent" ? "%" : currencySymbol})</label>
+                                  <input type="number" class="tool-input pay-amount" style="margin-bottom:0; height:28px;" placeholder="0" value="${prefillAmt || ""}">
                                 </div>
                                 <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end;">
                                   <div class="pay-calc" style="font-size:11px; color:#546e7a; font-weight:600; background:#eceff1; padding:6px; text-align:center; border-radius:2px;">${currencySymbol}0.00</div>
@@ -12084,13 +12481,13 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
                               <div style="display:flex; gap:10px;">
                                 <div style="flex:1;">
                                   <select class="audience-select pay-trigger-type" style="margin-bottom:0; height:28px; padding:2px;">
-                                    <option value="event" ${!prefillType || prefillType === 'event' ? 'selected' : ''}>On Event</option>
-                                    <option value="date" ${prefillType === 'date' ? 'selected' : ''}>Specific Date</option>
-                                    <option value="other" ${prefillType === 'other' ? 'selected' : ''}>Other</option>
+                                    <option value="event" ${!prefillType || prefillType === "event" ? "selected" : ""}>On Event</option>
+                                    <option value="date" ${prefillType === "date" ? "selected" : ""}>Specific Date</option>
+                                    <option value="other" ${prefillType === "other" ? "selected" : ""}>Other</option>
                                   </select>
                                 </div>
                                 <div style="flex:1;">
-                                  <input type="${prefillType === 'date' ? 'date' : 'text'}" class="tool-input pay-trigger-val" style="margin-bottom:0; height:28px; font-family:sans-serif;" value="${prefillDate || ''}" placeholder="${prefillType === 'date' ? '' : 'e.g. Execution'}">
+                                  <input type="${prefillType === "date" ? "date" : "text"}" class="tool-input pay-trigger-val" style="margin-bottom:0; height:28px; font-family:sans-serif;" value="${prefillDate || ""}" placeholder="${prefillType === "date" ? "" : "e.g. Execution"}">
                                 </div>
                               </div>
                               <div class="btn-del-row" style="position:absolute; top:-6px; right:-6px; background:#c62828; color:white; width:16px; height:16px; border-radius:50%; font-size:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.2);">✕</div>
@@ -12105,9 +12502,10 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
 
     amountInput.oninput = function () {
       var val = parseFloat(this.value) || 0;
-      if (currentMode === 'percent') {
+      if (currentMode === "percent") {
         var calc = (val / 100) * totalFee;
-        calcDisplay.innerText = currencySymbol + calc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        calcDisplay.innerText =
+          currencySymbol + calc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       } else {
         var calc = (val / totalFee) * 100;
         calcDisplay.innerText = calc.toFixed(0) + "%"; // No decimals for percent
@@ -12116,12 +12514,12 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
     };
 
     typeSel.onchange = function () {
-      if (this.value === 'date') {
+      if (this.value === "date") {
         valInput.type = "date";
         valInput.placeholder = "";
       } else {
         valInput.type = "text";
-        valInput.placeholder = this.value === 'event' ? "e.g. Execution" : "Details...";
+        valInput.placeholder = this.value === "event" ? "e.g. Execution" : "Details...";
       }
     };
     valInput.onchange = validateDates; // Check dates on change
@@ -12141,13 +12539,13 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
   function validateTotal() {
     var inputs = document.querySelectorAll(".pay-amount");
     var sum = 0;
-    inputs.forEach(inp => sum += (parseFloat(inp.value) || 0));
+    inputs.forEach((inp) => (sum += parseFloat(inp.value) || 0));
 
     var err = document.getElementById("payError");
     var btn = document.getElementById("btnPayApply");
 
     var isValid = false;
-    if (currentMode === 'percent') {
+    if (currentMode === "percent") {
       if (Math.abs(sum - 100) < 0.1) isValid = true;
       else err.innerText = `Total: ${sum}% (Must be 100%)`;
     } else {
@@ -12178,8 +12576,8 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
       var type = row.querySelector(".pay-trigger-type").value;
       var val = row.querySelector(".pay-trigger-val").value;
 
-      if (type === 'date' && val) {
-        var parts = val.split('-');
+      if (type === "date" && val) {
+        var parts = val.split("-");
         // Create date in local time (avoid timezone shifts)
         var d = new Date(parts[0], parts[1] - 1, parts[2]);
 
@@ -12200,7 +12598,9 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
       }
     }
   }
-  document.getElementById("btnAddPayRow").onclick = function () { renderRow(); };
+  document.getElementById("btnAddPayRow").onclick = function () {
+    renderRow();
+  };
 
   document.getElementById("payCurrency").onchange = function () {
     currencyCode = this.value;
@@ -12215,24 +12615,29 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
     validateTotal();
   };
 
-  modeRadios.forEach(r => r.onchange = function () {
-    currentMode = this.value;
-    container.innerHTML = ""; // Clear rows on mode switch to avoid confusion
-    renderRow();
-    validateTotal();
-  });
+  modeRadios.forEach(
+    (r) =>
+      (r.onchange = function () {
+        currentMode = this.value;
+        container.innerHTML = ""; // Clear rows on mode switch to avoid confusion
+        renderRow();
+        validateTotal();
+      }),
+  );
 
   // --- AUTO-FILL PARSER ---
   // Try to detect if the AI put a schedule in the string
   var hasSchedule = false;
   var scheduleTextForParsing = scheduleString || "";
   // Remove common prefixes
-  scheduleTextForParsing = scheduleTextForParsing.replace(/^(describe the payment schedule\/terms:|payment schedule:|payment terms:|fees:)\s*/i, "").trim();
+  scheduleTextForParsing = scheduleTextForParsing
+    .replace(/^(describe the payment schedule\/terms:|payment schedule:|payment terms:|fees:)\s*/i, "")
+    .trim();
 
   if (scheduleTextForParsing.includes("%") || /on\s|upon\s|due\s/i.test(scheduleTextForParsing)) {
     // Simple heuristic parser
     var parts = scheduleTextForParsing.split(/[;,/]|(?:\s+and\s+)/i);
-    parts = parts.filter(p => p && p.trim().length > 5); // Filter out empty/short parts
+    parts = parts.filter((p) => p && p.trim().length > 5); // Filter out empty/short parts
 
     var validRows = 0;
     parts.forEach(function (part) {
@@ -12242,10 +12647,11 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
       var dateMatch = part.match(/(?:on|upon|due)\s+(.+)/i);
       var dateVal = dateMatch ? dateMatch[1].trim().replace(/\)$/, "") : "";
 
-      if (amt && dateVal) { // Require both to be found
+      if (amt && dateVal) {
+        // Require both to be found
         if (validRows === 0 && scheduleTextForParsing.includes("%")) {
           currentMode = "percent";
-          modeRadios.forEach(r => r.checked = (r.value === "percent"));
+          modeRadios.forEach((r) => (r.checked = r.value === "percent"));
         }
         renderRow(amt, "event", dateVal);
         validRows++;
@@ -12259,7 +12665,7 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
     if (totalFee > 0) {
       // If mode is percent, default to 100%
       // If mode is fixed, default to totalFee
-      var defaultAmt = (currentMode === 'percent') ? "100" : totalFee;
+      var defaultAmt = currentMode === "percent" ? "100" : totalFee;
       renderRow(defaultAmt);
     } else {
       renderRow(); // Default empty row
@@ -12275,7 +12681,7 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
   };
 
   document.getElementById("btnPayApply").onclick = function () {
-    // Generate String 
+    // Generate String
     var rowElements = document.querySelectorAll(".pay-row");
     var parts = [];
 
@@ -12288,24 +12694,25 @@ function showPaymentScheduleModal(totalFeeValue, scheduleString, callback) {
       var mainVal = "";
       var subVal = "";
 
-      if (currentMode === 'percent') {
+      if (currentMode === "percent") {
         mainVal = amt + "%";
         subVal = "(" + calc + ")"; // ($500.00)
       } else {
         // Fixed Amount: Force .00 formatting
         var fAmt = parseFloat(amt) || 0;
-        mainVal = currencySymbol + fAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        mainVal =
+          currencySymbol + fAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         subVal = ""; // Hide percent in document for fixed mode
       }
 
       var triggerText = val;
 
       // Keep "on" only for the Date Picker mode
-      if (type === 'date' && val) {
-        var dateParts = val.split('-');
+      if (type === "date" && val) {
+        var dateParts = val.split("-");
         if (dateParts.length === 3) {
           var d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-          triggerText = "on " + d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          triggerText = "on " + d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
         }
       }
 
@@ -12351,7 +12758,9 @@ function showSaveAsManager(autoSnapshotLabel) {
       </div>
   `;
 
-  var html = headerHtml + `
+  var html =
+    headerHtml +
+    `
       <div style="padding:15px;">
         <div id="scanLoader" style="background:#e3f2fd; padding:10px; border-radius:4px; margin-bottom:15px; font-size:11px; color:#1565c0; display:flex; align-items:center; gap:10px;">
            <div class="spinner" style="width:12px;height:12px;border-width:2px;"></div>
@@ -12413,7 +12822,8 @@ function showSaveAsManager(autoSnapshotLabel) {
   var overlayId = "step4_scan_overlay";
   var scanOverlay = document.createElement("div");
   scanOverlay.id = overlayId;
-  scanOverlay.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.96); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(2px); border-radius:0px;";
+  scanOverlay.style.cssText =
+    "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.96); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(2px); border-radius:0px;";
 
   scanOverlay.innerHTML = `
       <div class="spinner" style="width:40px; height:40px; border-width:4px; border-color:#1565c0 transparent #1565c0 transparent; margin-bottom:15px;"></div>
@@ -12424,7 +12834,6 @@ function showSaveAsManager(autoSnapshotLabel) {
 
   // Call the Master Scanner
   runAiEmailScanner(null, function (aiData) {
-
     // [NEW] 2. Remove Overlay immediately when data returns
     var existingOv = document.getElementById(overlayId);
     if (existingOv) existingOv.remove();
@@ -12447,7 +12856,7 @@ function showSaveAsManager(autoSnapshotLabel) {
     var ent = rawEnt.toLowerCase();
 
     var selEnt = document.getElementById("saveEntity");
-    selEnt.value = (ent.includes("hill")) ? "Hills" : "Colgate";
+    selEnt.value = ent.includes("hill") ? "Hills" : "Colgate";
 
     // Type Logic
     var rawType = (aiData.type || "").toLowerCase();
@@ -12456,7 +12865,9 @@ function showSaveAsManager(autoSnapshotLabel) {
     var found = false;
     for (var i = 0; i < selType.options.length; i++) {
       if (rawType.includes(selType.options[i].value.toLowerCase().replace("agreement", "").trim())) {
-        selType.selectedIndex = i; found = true; break;
+        selType.selectedIndex = i;
+        found = true;
+        break;
       }
     }
     if (!found && rawType.length > 2) {
@@ -12479,24 +12890,40 @@ function showSaveAsManager(autoSnapshotLabel) {
   var previewEl = document.getElementById("fileNamePreview");
 
   typeSel.onchange = function () {
-    typeManual.style.display = (this.value === "Other") ? "block" : "none";
+    typeManual.style.display = this.value === "Other" ? "block" : "none";
     updatePreview();
   };
 
   function generateFileName() {
     var entity = entitySel.value;
-    var type = (typeSel.value === "Other") ? (typeManual.value || "Agreement") : typeSel.value;
+    var type = typeSel.value === "Other" ? typeManual.value || "Agreement" : typeSel.value;
     var party = partyInp.value.trim() || "Unknown";
     var ref = refInp.value.trim() || "Draft";
     var today = new Date();
-    var dateStr = (today.getMonth() + 1).toString().padStart(2, '0') + "." + today.getDate().toString().padStart(2, '0') + "." + today.getFullYear();
-    var patterns = userSettings.fileNamePatterns || { colgate: "[Ref] - CP-[Party] -- [Type] (DRAFT [Date])", hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])" };
-    var pattern = (entity === "Hills") ? patterns.hills : patterns.colgate;
-    return pattern.replace("[Ref]", ref).replace("[Party]", party).replace("[Type]", type).replace("[Date]", dateStr) + ".docx";
+    var dateStr =
+      (today.getMonth() + 1).toString().padStart(2, "0") +
+      "." +
+      today.getDate().toString().padStart(2, "0") +
+      "." +
+      today.getFullYear();
+    var patterns = userSettings.fileNamePatterns || {
+      colgate: "[Ref] - CP-[Party] -- [Type] (DRAFT [Date])",
+      hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])",
+    };
+    var pattern = entity === "Hills" ? patterns.hills : patterns.colgate;
+    return (
+      pattern.replace("[Ref]", ref).replace("[Party]", party).replace("[Type]", type).replace("[Date]", dateStr) +
+      ".docx"
+    );
   }
 
-  function updatePreview() { previewEl.innerText = generateFileName(); }
-  [entitySel, typeSel, typeManual, partyInp, refInp].forEach(el => { el.addEventListener('input', updatePreview); el.addEventListener('change', updatePreview); });
+  function updatePreview() {
+    previewEl.innerText = generateFileName();
+  }
+  [entitySel, typeSel, typeManual, partyInp, refInp].forEach((el) => {
+    el.addEventListener("input", updatePreview);
+    el.addEventListener("change", updatePreview);
+  });
   updatePreview(); // Initial preview (Empty)
 
   // --- HELPER: HANDOFF TO STEP 5 ---
@@ -12506,7 +12933,7 @@ function showSaveAsManager(autoSnapshotLabel) {
       type: typeSel.value,
       entity: entitySel.value,
       third_party_entity: partyInp.value,
-      cp_ref: refInp.value
+      cp_ref: refInp.value,
     };
 
     // 2. Merge with the hidden email data we fetched earlier
@@ -12542,9 +12969,10 @@ function showSaveAsManager(autoSnapshotLabel) {
               slicesReceived++;
               if (slicesReceived == sliceCount) {
                 myFile.closeAsync();
-                var blob = new Blob([new Uint8Array(docdata)], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+                var blob = new Blob([new Uint8Array(docdata)], {
+                  type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                });
                 saveFileWithDialog(blob, finalName, function () {
-
                   // AUTO SNAPSHOT
                   btn.innerHTML = "📷 Capturing Version...";
                   createSnapshot("CP Version: " + finalName + " [Original Version]", null, function () {
@@ -12553,9 +12981,10 @@ function showSaveAsManager(autoSnapshotLabel) {
                     status.style.display = "none";
                     btn.innerHTML = "✅ Done";
                   });
-
                 });
-              } else { getSlice(slicesReceived); }
+              } else {
+                getSlice(slicesReceived);
+              }
             }
           });
         };
@@ -12565,16 +12994,20 @@ function showSaveAsManager(autoSnapshotLabel) {
         btn.disabled = false;
         btn.innerHTML = "💾 Save Document";
       }
-    }
-    );
+    });
   };
   // --- SKIP BUTTON ---
   document.getElementById("btnSkipSave").onclick = function () {
     // CHANGE: Create a snapshot before moving to email
-    createSnapshot("[SENT VERSION -- NOT SAVED THROUGH ELI]", null, function () {
-      showToast("⏩ Snapshot Saved & Opening Emailer...");
-      proceedToEmail();
-    }, true); // forceNew = true
+    createSnapshot(
+      "[SENT VERSION -- NOT SAVED THROUGH ELI]",
+      null,
+      function () {
+        showToast("⏩ Snapshot Saved & Opening Emailer...");
+        proceedToEmail();
+      },
+      true,
+    ); // forceNew = true
   };
 
   // Auto-Snapshot logic (runs silently)
@@ -12582,10 +13015,15 @@ function showSaveAsManager(autoSnapshotLabel) {
   // Auto-Snapshot logic (runs silently)
   if (autoSnapshotLabel) {
     // CHANGE: Added 'true' as 4th argument to force a NEW entry (no overwrite)
-    createSnapshot(autoSnapshotLabel, null, function () {
-      console.log("Snapshot Created: " + autoSnapshotLabel);
-      showToast("📷 Snapshot Saved: " + autoSnapshotLabel); // Optional visual confirmation
-    }, true);
+    createSnapshot(
+      autoSnapshotLabel,
+      null,
+      function () {
+        console.log("Snapshot Created: " + autoSnapshotLabel);
+        showToast("📷 Snapshot Saved: " + autoSnapshotLabel); // Optional visual confirmation
+      },
+      true,
+    );
   }
 }
 // ==========================================
@@ -12600,8 +13038,7 @@ async function saveFileWithDialog(blob, fileName, onSuccess) {
           {
             description: "Word Document",
             accept: {
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                [".docx"],
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
             },
           },
         ],
@@ -12611,7 +13048,10 @@ async function saveFileWithDialog(blob, fileName, onSuccess) {
       await writable.close();
 
       if (onSuccess) onSuccess();
-      else { showToast("✅ Saved Successfully"); init(); }
+      else {
+        showToast("✅ Saved Successfully");
+        init();
+      }
     } catch (err) {
       // User hit "Cancel" in the dialog
       console.log("User cancelled save");
@@ -12627,7 +13067,10 @@ async function saveFileWithDialog(blob, fileName, onSuccess) {
     document.body.removeChild(link);
 
     if (onSuccess) onSuccess();
-    else { showToast("✅ File Downloaded"); init(); }
+    else {
+      showToast("✅ File Downloaded");
+      init();
+    }
   }
 }
 // ==========================================
@@ -12651,17 +13094,19 @@ PROMPTS.saveActiveDocCache = function (id, name, data, aiData) {
       name: name || "Active Document",
       type: "ActiveDocument",
       aiCache: aiData,
-      lastModified: Date.now()
+      lastModified: Date.now(),
     });
     putRequest.onsuccess = resolve;
-    putRequest.onerror = (e) => { console.warn("Cache Save Fail", e); resolve(); }; // Soft fail
+    putRequest.onerror = (e) => {
+      console.warn("Cache Save Fail", e);
+      resolve();
+    }; // Soft fail
   });
 };
 async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
-
   if (manualData && !callbackMode && (manualData.third_party_entity || manualData.contact_email || manualData.type)) {
     console.log("⚡ Skipping Scan: Data provided by Save Manager");
-    showThirdPartySendModal(manualData, null, 'req');
+    showThirdPartySendModal(manualData, null, "req");
     return;
   }
 
@@ -12682,31 +13127,29 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
   try {
     // --- STEP 1: CHECK RAM (Fastest) ---
     // SURGICAL FIX: Check both window scope and global scope. Always prioritize this if data exists.
-    var sourceData = (typeof window.AGREEMENT_DATA !== 'undefined' ? window.AGREEMENT_DATA : null) ||
-      (typeof AGREEMENT_DATA !== 'undefined' ? AGREEMENT_DATA : null);
+    var sourceData =
+      (typeof window.AGREEMENT_DATA !== "undefined" ? window.AGREEMENT_DATA : null) ||
+      (typeof AGREEMENT_DATA !== "undefined" ? AGREEMENT_DATA : null);
 
     if (sourceData && (sourceData.text || sourceData.data)) {
       showToast("✅ 2. Re-Loading OARS Data");
       // Normalize payload from RAM
       if (sourceData.isBase64) filePayload = sourceData;
       else filePayload = sourceData.text || sourceData;
-    }
-    else if (!forceFresh) {
+    } else if (!forceFresh) {
       // --- STEP 2: FORCE DB LOAD (Self-Reliant) ---
       if (!PROMPTS._dbInstance) await PROMPTS.initDocDB();
 
-      var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+      var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
       var dbPromise = PROMPTS.loadDocFromDB(uniqueKey);
-      var timerPromise = new Promise(r => setTimeout(() => r('TIMEOUT'), 3000));
+      var timerPromise = new Promise((r) => setTimeout(() => r("TIMEOUT"), 3000));
       var record = await Promise.race([dbPromise, timerPromise]);
 
-      if (record === 'TIMEOUT') {
+      if (record === "TIMEOUT") {
         showToast("❌ DB Timeout");
-      }
-      else if (!record) {
+      } else if (!record) {
         showToast("⚠️ No OARS Data Found");
-      }
-      else {
+      } else {
         if (record.aiCache && Array.isArray(record.aiCache)) {
           console.log("⚡ FAST LOAD: Using Saved AI Cache");
 
@@ -12728,7 +13171,7 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
           // ROBUST FIND: Map 'type' -> 'agreement_type'
           var foundType = null;
           Object.keys(cachedData).forEach(function (k) {
-            if (k.toLowerCase().includes('type') || k.toLowerCase().includes('agreement')) {
+            if (k.toLowerCase().includes("type") || k.toLowerCase().includes("agreement")) {
               foundType = cachedData[k];
             }
           });
@@ -12746,7 +13189,7 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
             callbackMode(cachedData);
           } else {
             // Launch Modal & EXIT immediately
-            showThirdPartySendModal(cachedData, null, 'tp');
+            showThirdPartySendModal(cachedData, null, "tp");
           }
           return;
         }
@@ -12755,33 +13198,30 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
         // If no cache, THEN check for file data
         if (!record.data) {
           showToast("❌ Record found but DATA is missing");
-        }
-        else {
+        } else {
           showToast("✅ OARS Data Found: " + record.name);
 
           // --- STEP 3: EXTRACT CONTENT LOCALLY ---
           if (record.name.toLowerCase().endsWith(".docx")) {
             // Word Doc -> Text
-            if (typeof mammoth === 'undefined') {
+            if (typeof mammoth === "undefined") {
               showToast("❌ Mammoth Library Missing");
             } else {
               var result = await mammoth.convertToHtml({ arrayBuffer: record.data });
-              var cleanText = result.value.replace(/<[^>]*>/g, ' ');
+              var cleanText = result.value.replace(/<[^>]*>/g, " ");
               filePayload = cleanText;
               window.AGREEMENT_DATA = { name: record.name, text: cleanText };
             }
-          }
-          else if (record.name.toLowerCase().endsWith(".pdf")) {
+          } else if (record.name.toLowerCase().endsWith(".pdf")) {
             // PDF -> Base64
             var reader = new FileReader();
-            var b64 = await new Promise(resolve => {
-              reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            var b64 = await new Promise((resolve) => {
+              reader.onloadend = () => resolve(reader.result.split(",")[1]);
               reader.readAsDataURL(new Blob([record.data]));
             });
             filePayload = { name: record.name, isBase64: true, mime: "application/pdf", data: b64 };
             window.AGREEMENT_DATA = filePayload;
-          }
-          else {
+          } else {
             // Text File -> String
             var dec = new TextDecoder("utf-8");
             filePayload = dec.decode(record.data);
@@ -12889,15 +13329,14 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
         callbackMode(data);
       } else {
         // STANDARD MODE: Open Email UI
-        var tab = manualData ? 'req' : 'tp';
+        var tab = manualData ? "req" : "tp";
         showThirdPartySendModal(data, null, tab);
       }
-
     } catch (e) {
       console.error(e);
       setLoading(false);
       showToast("⚠️ AI Error: " + e.message);
-      showThirdPartySendModal(manualData || {}, null, 'tp');
+      showThirdPartySendModal(manualData || {}, null, "tp");
     }
   } else {
     // --- STEP 3: FALLBACK - SCAN ACTIVE WORD DOCUMENT ---
@@ -12916,13 +13355,19 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
 
         var rangesToLoad = [body];
         sections.items.forEach(function (section) {
-          ['Primary', 'FirstPage', 'EvenPages'].forEach(type => {
-            try { rangesToLoad.push(section.getFooter(type)); } catch (e) { }
-            try { rangesToLoad.push(section.getHeader(type)); } catch (e) { }
+          ["Primary", "FirstPage", "EvenPages"].forEach((type) => {
+            try {
+              rangesToLoad.push(section.getFooter(type));
+            } catch (e) {}
+            try {
+              rangesToLoad.push(section.getHeader(type));
+            } catch (e) {}
           });
         });
 
-        rangesToLoad.forEach(function (r) { r.load("text"); });
+        rangesToLoad.forEach(function (r) {
+          r.load("text");
+        });
         await context.sync();
 
         rangesToLoad.forEach(function (r) {
@@ -12967,13 +13412,12 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
       if (callbackMode) {
         callbackMode(data);
       } else {
-        showThirdPartySendModal(data, null, 'tp');
+        showThirdPartySendModal(data, null, "tp");
       }
-
     } catch (e) {
       setLoading(false);
       console.error(e);
-      showThirdPartySendModal({}, null, 'tp');
+      showThirdPartySendModal({}, null, "tp");
       showToast("⚠️ Scan failed, please fill manually.");
     }
   }
@@ -12981,11 +13425,10 @@ async function runAiEmailScanner(manualData, callbackMode, forceFresh) {
 // ==========================================
 // REPLACE: showThirdPartySendModal (With Firewall)
 // ==========================================
-async function showThirdPartySendModal(aiData = {}, autoSelectId = null, defaultDest = 'tp') {
-
+async function showThirdPartySendModal(aiData = {}, autoSelectId = null, defaultDest = "tp") {
   // --- 🛑 GARBAGE FIREWALL: Sanitize Data on Entry ---
   // This ensures the modal NEVER sees the "application/vnd..." string
-  var dirtyKeys = ['agreement_type', 'type'];
+  var dirtyKeys = ["agreement_type", "type"];
   dirtyKeys.forEach(function (key) {
     if (aiData[key]) {
       var val = String(aiData[key]).toLowerCase();
@@ -13005,7 +13448,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
   card.className = "tool-box slide-in";
   card.style.cssText = "border-left: 5px solid #455a64; padding: 0; background: white; margin-bottom: 10px;";
 
-  let savedReqs = await loadFeatureData(STORE_REQUESTERS) || [];
+  let savedReqs = (await loadFeatureData(STORE_REQUESTERS)) || [];
 
   const hideManual = savedReqs.length > 0 && String(autoSelectId) !== "add_other";
   const inputStyle = "font-size:11px; height:28px; padding:4px 8px; width:100%; box-sizing:border-box;";
@@ -13019,10 +13462,10 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
       <div style="padding:15px; padding-top:0;">
         <div style="margin-bottom:10px; background:#f5f5f5; padding:8px; border-radius:0px; display:flex; gap:15px;">
           <label style="font-size:11px; cursor:pointer; font-weight:600; color:#333;">
-            <input type="radio" name="dest" value="tp" ${defaultDest === 'tp' ? 'checked' : ''}> Third Party
+            <input type="radio" name="dest" value="tp" ${defaultDest === "tp" ? "checked" : ""}> Third Party
           </label>
           <label style="font-size:11px; cursor:pointer; font-weight:600; color:#333;">
-            <input type="radio" name="dest" value="req" ${defaultDest === 'req' ? 'checked' : ''}> Requester
+            <input type="radio" name="dest" value="req" ${defaultDest === "req" ? "checked" : ""}> Requester
           </label>
         </div>
 
@@ -13056,7 +13499,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
           <input type="text" id="emTpEntity" class="tool-input" value="${aiData.third_party_entity || ""}" style="${inputStyle}">
         </div>
 
-        <div id="tpContactSection" style="display:${defaultDest === 'tp' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div id="tpContactSection" style="display:${defaultDest === "tp" ? "grid" : "none"}; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <div>
             <label class="tool-label" style="${labelStyle}">TP Full Name</label>
             <input type="text" id="emTpName" class="tool-input" value="${aiData.contact_full_name || aiData.contact_first_name || ""}" style="${inputStyle}">
@@ -13096,9 +13539,9 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
         <div id="btnAddParticipants" style="font-size:10px; font-weight:700; color:#1565c0; cursor:pointer; display:inline-block; margin-bottom:5px;">
           ➕ Add Additional Participants
         </div>
-        <div id="addParticipantsSection" class="${(aiData.additional_participants && aiData.additional_participants.length > 0) ? "" : "hidden"}" style="background:#f1f8e9; padding:10px; border:1px solid #c5e1a5; margin-bottom:5px;">
+        <div id="addParticipantsSection" class="${aiData.additional_participants && aiData.additional_participants.length > 0 ? "" : "hidden"}" style="background:#f1f8e9; padding:10px; border:1px solid #c5e1a5; margin-bottom:5px;">
         <label class="tool-label" style="${labelStyle}">Additional CCs</label>
-        <textarea id="emAddCcs" class="tool-input" style="${inputStyle} height:50px; font-family:monospace;" placeholder="Name <email>, ...">${(aiData.additional_participants || []).map(p => (p.name && p.name !== "Unknown") ? `${p.name} <${p.email}>` : p.email).join(', ')}</textarea>
+        <textarea id="emAddCcs" class="tool-input" style="${inputStyle} height:50px; font-family:monospace;" placeholder="Name <email>, ...">${(aiData.additional_participants || []).map((p) => (p.name && p.name !== "Unknown" ? `${p.name} <${p.email}>` : p.email)).join(", ")}</textarea>
       </div>
     </div>
 
@@ -13124,9 +13567,11 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
 
     // 1. Debug Toast to Confirm what we see
 
-
     if (rawType && agTypeSel) {
-      var cleanTarget = String(rawType).toLowerCase().replace(/[^a-z ]/g, "").trim();
+      var cleanTarget = String(rawType)
+        .toLowerCase()
+        .replace(/[^a-z ]/g, "")
+        .trim();
 
       // 2. SCORING RULES
       var rules = [
@@ -13143,7 +13588,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
         { key: "clinical", score: 100 },
         { key: "joint", score: 100 },
         { key: "development", score: 50 },
-        { key: "agreement", score: 0 } // Ignored
+        { key: "agreement", score: 0 }, // Ignored
       ];
 
       var bestIndex = -1;
@@ -13175,7 +13620,6 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
 
       if (bestIndex !== -1 && bestScore > 0) {
         agTypeSel.selectedIndex = bestIndex;
-
       }
     }
 
@@ -13203,7 +13647,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
 
     if (aiData.additional_participants && aiData.additional_participants.length > 0) {
       var btnAdd = document.getElementById("btnAddParticipants");
-      if (btnAdd) btnAdd.style.display = 'none';
+      if (btnAdd) btnAdd.style.display = "none";
     }
   }, 300);
 
@@ -13213,9 +13657,9 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
   const btnDelete = document.getElementById("btnDeleteReq");
   const tpContactSection = document.getElementById("tpContactSection");
 
-  document.querySelectorAll('input[name="dest"]').forEach(radio => {
-    radio.addEventListener('change', function () {
-      tpContactSection.style.display = this.value === 'tp' ? 'grid' : 'none';
+  document.querySelectorAll('input[name="dest"]').forEach((radio) => {
+    radio.addEventListener("change", function () {
+      tpContactSection.style.display = this.value === "tp" ? "grid" : "none";
     });
   });
 
@@ -13224,7 +13668,10 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
   document.getElementById("btnSaveReq").onclick = async function () {
     const name = document.getElementById("emReqFullName").value.trim();
     const email = document.getElementById("emReqEmail").value.trim();
-    if (!name || !email) { showToast("⚠️ Enter details first"); return; }
+    if (!name || !email) {
+      showToast("⚠️ Enter details first");
+      return;
+    }
     const newId = String(Date.now());
     savedReqs.push({ id: newId, name: name, email: email });
     await saveFeatureData(STORE_REQUESTERS, savedReqs);
@@ -13240,12 +13687,17 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
   btnDelete.onclick = function (e) {
     e.preventDefault();
     const selectedId = selReq.value;
-    if (!selectedId || selectedId === "add_other") { showToast("⚠️ Select a saved name first"); return; }
+    if (!selectedId || selectedId === "add_other") {
+      showToast("⚠️ Select a saved name first");
+      return;
+    }
     var delOverlay = document.createElement("div");
-    delOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:30000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(1px);";
+    delOverlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:30000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(1px);";
     var delBox = document.createElement("div");
     delBox.className = "tool-box slide-in";
-    delBox.style.cssText = "background:white; width:260px; padding:20px; border-left:5px solid #c62828; border-radius:4px; text-align:center;";
+    delBox.style.cssText =
+      "background:white; width:260px; padding:20px; border-left:5px solid #c62828; border-radius:4px; text-align:center;";
     delBox.innerHTML = `
                           <div style="font-size:14px; font-weight:700; margin-bottom:10px; color:#c62828;">Delete Requester?</div>
                           <div style="font-size:11px; color:#555; margin-bottom:15px;">Are you sure?</div>
@@ -13257,11 +13709,13 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
     document.body.appendChild(delOverlay);
     document.getElementById("btnCancelDel").onclick = () => delOverlay.remove();
     document.getElementById("btnConfirmDel").onclick = async function () {
-      const updated = savedReqs.filter(r => String(r.id) !== String(selectedId));
+      const updated = savedReqs.filter((r) => String(r.id) !== String(selectedId));
       await saveFeatureData(STORE_REQUESTERS, updated);
       delOverlay.remove();
       showToast("🗑️ Removed");
-      setTimeout(function () { showThirdPartySendModal(aiData || {}); }, 50);
+      setTimeout(function () {
+        showThirdPartySendModal(aiData || {});
+      }, 50);
     };
   };
 
@@ -13270,7 +13724,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
     btnAddPart.onclick = function () {
       var sect = document.getElementById("addParticipantsSection");
       sect.classList.remove("hidden");
-      this.style.display = 'none';
+      this.style.display = "none";
     };
   }
 
@@ -13286,7 +13740,8 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
     const tpEmail = (document.getElementById("emTpEmail").value || "").trim();
     const cpRef = document.getElementById("emCpRef").value || "N/A";
 
-    let reqName = "", reqEmail = "";
+    let reqName = "",
+      reqEmail = "";
     if (selReq.value === "add_other" || selReq.value === "") {
       reqName = document.getElementById("emReqFullName").value;
       reqEmail = document.getElementById("emReqEmail").value;
@@ -13302,12 +13757,19 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
     const isToRequester = document.querySelector('input[name="dest"]:checked').value === "req";
     const to = isToRequester ? reqEmail : tpEmail;
 
-    let tmpl = (typeof userSettings !== "undefined" && userSettings.emailTemplates) ? userSettings.emailTemplates : { myName: "Andrew", thirdParty: {}, requester: {} };
-    if (!tmpl.thirdParty.subject) tmpl = {
-      myName: "Andrew",
-      thirdParty: { subject: "[Entity] and [TP Entity] -- [Type] ([CP Ref]) ([Date])", body: "Hello [TP Contact],\n\nAttached please find..." },
-      requester: { subject: "FYI: [Entity]...", body: "Hi [Requester]..." }
-    };
+    let tmpl =
+      typeof userSettings !== "undefined" && userSettings.emailTemplates
+        ? userSettings.emailTemplates
+        : { myName: "Andrew", thirdParty: {}, requester: {} };
+    if (!tmpl.thirdParty.subject)
+      tmpl = {
+        myName: "Andrew",
+        thirdParty: {
+          subject: "[Entity] and [TP Entity] -- [Type] ([CP Ref]) ([Date])",
+          body: "Hello [TP Contact],\n\nAttached please find...",
+        },
+        requester: { subject: "FYI: [Entity]...", body: "Hi [Requester]..." },
+      };
 
     const activeTmpl = isToRequester ? tmpl.requester : tmpl.thirdParty;
     let rawSubj = activeTmpl.subject || "";
@@ -13325,7 +13787,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
         const rawName = (tmpl.myName || "Andrew").trim();
         if (tmpl.useFullName) return rawName;
         return rawName.split(" ")[0];
-      })()
+      })(),
     };
 
     Object.keys(map).forEach((key) => {
@@ -13343,7 +13805,7 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
         for (var m = 0; m < matches.length; m++) ccList.push(matches[m]);
       }
     }
-    ccList.push('tech_agreements@colpal.com');
+    ccList.push("tech_agreements@colpal.com");
 
     var uniqueCC = [];
     var seen = {};
@@ -13357,17 +13819,24 @@ async function showThirdPartySendModal(aiData = {}, autoSelectId = null, default
       uniqueCC.push(email);
       seen[lower] = true;
     }
-    var ccString = uniqueCC.join(',');
+    var ccString = uniqueCC.join(",");
 
-    var gmailUrl = "https://mail.google.com/mail/?view=cm&fs=1" +
-      "&to=" + encodeURIComponent(to) +
-      "&cc=" + encodeURIComponent(ccString) +
-      "&su=" + encodeURIComponent(rawSubj) +
-      "&body=" + encodeURIComponent(rawBody);
+    var gmailUrl =
+      "https://mail.google.com/mail/?view=cm&fs=1" +
+      "&to=" +
+      encodeURIComponent(to) +
+      "&cc=" +
+      encodeURIComponent(ccString) +
+      "&su=" +
+      encodeURIComponent(rawSubj) +
+      "&body=" +
+      encodeURIComponent(rawBody);
 
     this.innerText = "🚀 Opening...";
     var btn = this;
-    setTimeout(function () { btn.innerText = "🚀 OPEN GMAIL DRAFT"; }, 2000);
+    setTimeout(function () {
+      btn.innerText = "🚀 OPEN GMAIL DRAFT";
+    }, 2000);
 
     if (Office.context.ui && Office.context.ui.openBrowserWindow) {
       Office.context.ui.openBrowserWindow(gmailUrl);
@@ -13468,13 +13937,13 @@ function runRedlineSummary(btn) {
       try {
         p = r.paragraphs.getFirst();
         p.load("text");
-      } catch (e) { }
+      } catch (e) {}
 
       proxies.push({
         change: c,
         range: r,
         para: p,
-        xmlResult: ooxmlResult // Store the pending result
+        xmlResult: ooxmlResult, // Store the pending result
       });
     }
 
@@ -13516,7 +13985,9 @@ function runRedlineSummary(btn) {
       if (rawText.length > 300) rawText = rawText.substring(0, 300) + "...";
 
       var contextText = "";
-      try { contextText = item.para ? item.para.text : ""; } catch (e) { }
+      try {
+        contextText = item.para ? item.para.text : "";
+      } catch (e) {}
       if (contextText) {
         contextText = contextText.replace(/[\r\n]+/g, " ").trim();
         if (contextText.length > 500) contextText = contextText.substring(0, 500) + "...";
@@ -13526,7 +13997,7 @@ function runRedlineSummary(btn) {
         id: i,
         type: c.type,
         text: rawText,
-        context: contextText || "Context unavailable."
+        context: contextText || "Context unavailable.",
       });
     }
 
@@ -13586,9 +14057,11 @@ function extractTextFromOoxml(xmlString) {
   var matches = xmlString.match(/<w:(?:t|delText)[^>]*>(.*?)<\/w:(?:t|delText)>/g);
   if (!matches) return "";
 
-  return matches.map(function (tag) {
-    return tag.replace(/<[^>]+>/g, "");
-  }).join("");
+  return matches
+    .map(function (tag) {
+      return tag.replace(/<[^>]+>/g, "");
+    })
+    .join("");
 }
 // ==========================================
 // REPLACE: renderRedlineDashboard (Squared Locate + Collapsible Header)
@@ -13610,10 +14083,10 @@ window.toggleRedlineCategory = function (id) {
 };
 
 window.toggleAllRedlineGroups = function (show) {
-  var contents = document.querySelectorAll('.redline-group-content');
-  var arrows = document.querySelectorAll('.redline-group-arrow');
-  contents.forEach(el => el.style.display = show ? 'block' : 'none');
-  arrows.forEach(el => el.innerHTML = show ? '▼' : '▶');
+  var contents = document.querySelectorAll(".redline-group-content");
+  var arrows = document.querySelectorAll(".redline-group-arrow");
+  contents.forEach((el) => (el.style.display = show ? "block" : "none"));
+  arrows.forEach((el) => (el.innerHTML = show ? "▼" : "▶"));
 };
 
 // NEW: Toggle the Main Analysis Box
@@ -13667,8 +14140,10 @@ function renderRedlineDashboard(viewMode) {
                                 box-shadow: 0 1px 2px rgba(0,0,0,0.05);
                                 white-space: nowrap;
                                 `;
-  var hoverOn = "this.style.background='#e3f2fd'; this.style.borderColor='#1565c0'; this.style.transform='translateY(-1px)';";
-  var hoverOff = "this.style.background='linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)'; this.style.borderColor='#b0bec5'; this.style.transform='translateY(0)';";
+  var hoverOn =
+    "this.style.background='#e3f2fd'; this.style.borderColor='#1565c0'; this.style.transform='translateY(-1px)';";
+  var hoverOff =
+    "this.style.background='linear-gradient(to bottom, #ffffff 0%, #eceff1 100%)'; this.style.borderColor='#b0bec5'; this.style.transform='translateY(0)';";
 
   // --- CALCULATE STATS ---
   var stats = { Legal: 0, Financial: 0, Formatting: 0, Operational: 0 };
@@ -13696,12 +14171,13 @@ function renderRedlineDashboard(viewMode) {
   });
 
   // --- EXPAND/COLLAPSE CONTROLS (Moved to footer) ---
-  var showExpandCollapse = (mode === 'category' || mode === 'clause');
+  var showExpandCollapse = mode === "category" || mode === "clause";
 
   // --- 1. RENDER ANALYSIS DASHBOARD (Collapsible) ---
   var dash = document.createElement("div");
   dash.className = "tool-box slide-in";
-  dash.style.cssText = "padding:12px 16px; border-left:5px solid #1565c0; background:#f8f9fa; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-radius:0px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;";
+  dash.style.cssText =
+    "padding:12px 16px; border-left:5px solid #1565c0; background:#f8f9fa; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-radius:0px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;";
 
   dash.innerHTML = `
                                 <div onclick="window.toggleRedlineSummary()" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
@@ -13725,17 +14201,18 @@ function renderRedlineDashboard(viewMode) {
   segContainer.style.cssText = "display:flex; justify-content:center; margin-bottom:20px; position:relative;";
 
   // Style for Active vs Inactive Buttons
-  var btnBase = "padding:5px 16px; font-size:10px; font-weight:700; cursor:pointer; min-width:70px; text-align:center; transition:all 0.2s; border-radius:0px;";
+  var btnBase =
+    "padding:5px 16px; font-size:10px; font-weight:700; cursor:pointer; min-width:70px; text-align:center; transition:all 0.2s; border-radius:0px;";
   var btnActive = "background:white; color:#1565c0; box-shadow:0 1px 3px rgba(0,0,0,0.15);";
   var btnInactive = "color:#546e7a; background:transparent;";
 
   segContainer.innerHTML = `
                                 <div style="display:flex; background:#e0e0e0; padding:2px; border:1px solid #cfd8dc; border-radius:0px;">
-                                  <div onclick="renderRedlineDashboard('category')" style="${btnBase} ${mode === 'category' ? btnActive : btnInactive}">CATEGORY</div>
-                                  <div onclick="renderRedlineDashboard('clause')" style="${btnBase} ${mode === 'clause' ? btnActive : btnInactive} border-left:1px solid #ccc; border-right:1px solid #ccc;">CLAUSE</div>
-                                  <div onclick="renderRedlineDashboard('sequential')" style="${btnBase} ${mode === 'sequential' ? btnActive : btnInactive}">LIST</div>
+                                  <div onclick="renderRedlineDashboard('category')" style="${btnBase} ${mode === "category" ? btnActive : btnInactive}">CATEGORY</div>
+                                  <div onclick="renderRedlineDashboard('clause')" style="${btnBase} ${mode === "clause" ? btnActive : btnInactive} border-left:1px solid #ccc; border-right:1px solid #ccc;">CLAUSE</div>
+                                  <div onclick="renderRedlineDashboard('sequential')" style="${btnBase} ${mode === "sequential" ? btnActive : btnInactive}">LIST</div>
                                 </div>
-                                <div style="position:absolute; right:0; top:50%; transform:translateY(-50%); display:${showExpandCollapse ? 'flex' : 'none'}; gap:10px; font-size:9px; font-weight:700; color:#1565c0;">
+                                <div style="position:absolute; right:0; top:50%; transform:translateY(-50%); display:${showExpandCollapse ? "flex" : "none"}; gap:10px; font-size:9px; font-weight:700; color:#1565c0;">
                                   <span onclick="window.toggleAllRedlineGroups(true)" style="cursor:pointer; text-decoration:underline; white-space:nowrap;">EXPAND ALL</span>
                                   <span onclick="window.toggleAllRedlineGroups(false)" style="cursor:pointer; text-decoration:underline; white-space:nowrap;">COLLAPSE ALL</span>
                                 </div>
@@ -13746,21 +14223,23 @@ function renderRedlineDashboard(viewMode) {
 
   function getRaw(id) {
     if (!data.raw) return { text: "??", context: "", type: "Unknown" };
-    return data.raw.find((r) => String(r.id) === String(id)) || {
-      text: "(Text reference lost)",
-      context: "",
-      type: "Unknown",
-    };
+    return (
+      data.raw.find((r) => String(r.id) === String(id)) || {
+        text: "(Text reference lost)",
+        context: "",
+        type: "Unknown",
+      }
+    );
   }
 
   function checkIsDeletion(rawItem, aiItem) {
     if (rawItem && rawItem.type) {
       var t = rawItem.type.toLowerCase();
-      return (t === "delete" || t === "deletion" || t === "deleted");
+      return t === "delete" || t === "deletion" || t === "deleted";
     }
     if (aiItem && aiItem.summary) {
       var s = aiItem.summary.toLowerCase();
-      return (s.includes("delete") || s.includes("remove") || s.includes("struck"));
+      return s.includes("delete") || s.includes("remove") || s.includes("struck");
     }
     return false;
   }
@@ -13788,23 +14267,27 @@ function renderRedlineDashboard(viewMode) {
       var base = isDel
         ? `<div style="color:#c62828; font-size:13px; line-height:1.5;"><strong>🗑️ ${lbl}:</strong> <span style="text-decoration:line-through; background-color:#ffebee;">${txt}</span></div>`
         : `<div style="color:#2e7d32; font-size:13px; line-height:1.5;"><strong>✏️ ${lbl}:</strong> <span style="background-color:#e8f5e9;">${txt}</span></div>`;
-      if (ctx) base += `<div style="margin-top:6px; color:#546e7a; font-size:12px; font-style:italic; line-height:1.4;">"...${ctx.substring(0, 140)}..."</div>`;
+      if (ctx)
+        base += `<div style="margin-top:6px; color:#546e7a; font-size:12px; font-style:italic; line-height:1.4;">"...${ctx.substring(0, 140)}..."</div>`;
       return base;
     };
 
     if (!rawContext || !rawText) return renderSimple(isDel ? "Deleted" : "Inserted", rawText, "");
 
     try {
-      var escaped = rawText.replace(/[.*+?^${ }()|[\]\\]/g, '\\$&');
-      var re = new RegExp(escaped, 'gi');
+      var escaped = rawText.replace(/[.*+?^${ }()|[\]\\]/g, "\\$&");
+      var re = new RegExp(escaped, "gi");
       if (re.test(rawContext)) {
         var styledContext = rawContext.replace(re, function (match) {
-          if (isDel) return `<span style="text-decoration:line-through; color:#c62828; background-color:#ffebee; font-weight:700;">${match}</span>`;
+          if (isDel)
+            return `<span style="text-decoration:line-through; color:#c62828; background-color:#ffebee; font-weight:700;">${match}</span>`;
           return `<span style="text-decoration:underline; color:#2e7d32; background-color:#e8f5e9; font-weight:700;">${match}</span>`;
         });
         return `<div style="font-size:13px; color:#37474f; line-height:1.5;">"...${styledContext}..."</div>`;
       }
-    } catch (e) { console.warn("Context highlight failed", e); }
+    } catch (e) {
+      console.warn("Context highlight failed", e);
+    }
     return renderSimple(isDel ? "Deleted" : "Inserted", rawText, rawContext);
   }
 
@@ -13813,23 +14296,31 @@ function renderRedlineDashboard(viewMode) {
     var isDel = checkIsDeletion(raw, item);
     var icon = isDel ? "🗑️" : "✏️";
     var visualHtml = getVisualContext(raw, isDel);
-    var showBadges = (typeof userSettings !== "undefined" && userSettings.showCompareRisk === true);
+    var showBadges = typeof userSettings !== "undefined" && userSettings.showCompareRisk === true;
     var sev = (item.severity || "Low").toLowerCase();
-    var sevColor = "#2e7d32"; var sevBg = "#e8f5e9";
-    if (sev.includes("critical") || sev.includes("high")) { sevColor = "#c62828"; sevBg = "#ffebee"; }
-    else if (sev.includes("medium")) { sevColor = "#e65100"; sevBg = "#fff3e0"; }
-    var badgeHtml = showBadges ? `<div style="font-size:10px; font-weight:800; color:${sevColor}; background:${sevBg}; padding:2px 8px; text-transform:uppercase; border:1px solid ${sevColor}; margin-left:auto;">${item.severity || "Info"}</div>` : '';
+    var sevColor = "#2e7d32";
+    var sevBg = "#e8f5e9";
+    if (sev.includes("critical") || sev.includes("high")) {
+      sevColor = "#c62828";
+      sevBg = "#ffebee";
+    } else if (sev.includes("medium")) {
+      sevColor = "#e65100";
+      sevBg = "#fff3e0";
+    }
+    var badgeHtml = showBadges
+      ? `<div style="font-size:10px; font-weight:800; color:${sevColor}; background:${sevBg}; padding:2px 8px; text-transform:uppercase; border:1px solid ${sevColor}; margin-left:auto;">${item.severity || "Info"}</div>`
+      : "";
 
     return `
                                 <div style="padding:8px 12px; background:#fcfcfc; border-bottom:1px solid #f0f0f0; display:flex; justify-content:flex-start; align-items:center;">
-                                  ${indexLabel ? `<span style="font-size:10px; background:#eee; padding:2px 6px; margin-right:8px; font-weight:bold;">#${indexLabel}</span>` : ''}
+                                  ${indexLabel ? `<span style="font-size:10px; background:#eee; padding:2px 6px; margin-right:8px; font-weight:bold;">#${indexLabel}</span>` : ""}
                                   <div style="font-size:11px; font-weight:800; color:${catColor}; text-transform:uppercase; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${icon} ${item.category}</div>
                                   ${badgeHtml}
                                 </div>
                                 <div style="padding:12px;">
                                   <div style="font-family:'Georgia', serif; margin-bottom:12px; background:#f9fafb; padding:10px; border:1px solid #e0e0e0; border-radius:0px;">${visualHtml}</div>
                                   <div style="font-size:14px; color:#212529; font-weight:600; margin-bottom:6px; line-height:1.4; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${item.summary || item.explanation}</div>
-                                  ${item.legal_impact ? `<div style="font-size:12px; color:#546e7a; background:#f5f9ff; padding:8px; border-left:3px solid #1565c0; line-height:1.4; margin-bottom:8px;">${item.legal_impact}</div>` : ''}
+                                  ${item.legal_impact ? `<div style="font-size:12px; color:#546e7a; background:#f5f9ff; padding:8px; border-left:3px solid #1565c0; line-height:1.4; margin-bottom:8px;">${item.legal_impact}</div>` : ""}
 
                                   <div style="text-align:right; margin-top:8px;">
                                     <button style="${platinumBtnStyle}"
@@ -13850,8 +14341,10 @@ function renderRedlineDashboard(viewMode) {
     });
     var sortOrder = ["Legal", "Financial", "Formatting", "Operational", "Other"];
     var sortedKeys = Object.keys(groups).sort((a, b) => {
-      var idxA = sortOrder.indexOf(a); if (idxA === -1) idxA = 99;
-      var idxB = sortOrder.indexOf(b); if (idxB === -1) idxB = 99;
+      var idxA = sortOrder.indexOf(a);
+      if (idxA === -1) idxA = 99;
+      var idxB = sortOrder.indexOf(b);
+      if (idxB === -1) idxB = 99;
       return idxA - idxB;
     });
 
@@ -13879,15 +14372,15 @@ function renderRedlineDashboard(viewMode) {
         var raw = getRaw(c.id);
         var card = document.createElement("div");
         card.className = "response-card slide-in";
-        card.style.cssText = "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:10px;";
+        card.style.cssText =
+          "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:10px;";
         card.innerHTML = createCardHTML(c, raw, catColor);
         contentDiv.appendChild(card);
       });
       groupContainer.appendChild(contentDiv);
       out.appendChild(groupContainer);
     });
-  }
-  else if (mode === "clause") {
+  } else if (mode === "clause") {
     var clauseGroups = {};
     changesList.forEach((c) => {
       var clauseName = "General / Unnumbered";
@@ -13948,22 +14441,23 @@ function renderRedlineDashboard(viewMode) {
         var catColor = colors[c.category] || "#37474f";
         var card = document.createElement("div");
         card.className = "response-card slide-in";
-        card.style.cssText = "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:10px;";
+        card.style.cssText =
+          "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:10px;";
         card.innerHTML = createCardHTML(c, raw, catColor);
         contentDiv.appendChild(card);
       });
       groupContainer.appendChild(contentDiv);
       out.appendChild(groupContainer);
     });
-  }
-  else {
+  } else {
     var sequentialList = changesList.slice().sort((a, b) => parseInt(a.id) - parseInt(b.id));
     sequentialList.forEach(function (item, idx) {
       var raw = getRaw(item.id);
       var catColor = colors[item.category] || "#37474f";
       var card = document.createElement("div");
       card.className = "response-card slide-in";
-      card.style.cssText = "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:15px;";
+      card.style.cssText =
+        "background:white; border:1px solid #e0e0e0; border-left:4px solid " + catColor + "; margin-bottom:15px;";
       card.innerHTML = createCardHTML(item, raw, catColor, idx + 1);
       out.appendChild(card);
     });
@@ -14008,14 +14502,14 @@ function runDraftFromFix(fixSuggestion) {
   showToast("⚡ Drafting Clause...");
 
   // 1. Get Document Context to inform the draft
-  validateApiAndGetText(true).then(function (contextText) {
+  validateApiAndGetText(true)
+    .then(function (contextText) {
+      // 2. Construct Prompt using the PROMPTS object
+      var prompt = PROMPTS.DRAFT(fixSuggestion, contextText.substring(0, 20000));
 
-    // 2. Construct Prompt using the PROMPTS object
-    var prompt = PROMPTS.DRAFT(fixSuggestion, contextText.substring(0, 20000));
-
-    // 3. Call AI
-    return callGemini(API_KEY, prompt);
-  })
+      // 3. Call AI
+      return callGemini(API_KEY, prompt);
+    })
     .then(function (jsonString) {
       try {
         var data = tryParseGeminiJSON(jsonString);
@@ -14036,12 +14530,14 @@ function runDraftFromFix(fixSuggestion) {
 function showDraftingModal(data) {
   // 1. Create Overlay
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   // 2. Create Modal Box
   var dialog = document.createElement("div");
   dialog.className = "tool-box slide-in";
-  dialog.style.cssText = "background:white; width:320px; padding:0; border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.3); overflow:hidden; border:1px solid #ccc;";
+  dialog.style.cssText =
+    "background:white; width:320px; padding:0; border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.3); overflow:hidden; border:1px solid #ccc;";
 
   // 3. Content
   dialog.innerHTML = `
@@ -14069,13 +14565,17 @@ function showDraftingModal(data) {
   // --- BIND ACTIONS ---
 
   // Close
-  document.getElementById("btnCloseDraft").onclick = function () { overlay.remove(); };
+  document.getElementById("btnCloseDraft").onclick = function () {
+    overlay.remove();
+  };
 
   // Copy
   document.getElementById("btnCopyDraft").onclick = function () {
     navigator.clipboard.writeText(data.text);
     this.innerText = "Copied! ✅";
-    setTimeout(() => { this.innerText = "📄 Copy"; }, 1500);
+    setTimeout(() => {
+      this.innerText = "📄 Copy";
+    }, 1500);
   };
 
   // Insert (Triggers "Scroll to Location" sub-modal)
@@ -14084,11 +14584,13 @@ function showDraftingModal(data) {
 
     // Show the Insertion Confirmation Modal
     var insertOverlay = document.createElement("div");
-    insertOverlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+    insertOverlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
     var insertDialog = document.createElement("div");
     insertDialog.className = "tool-box slide-in";
-    insertDialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #2e7d32; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+    insertDialog.style.cssText =
+      "background:white; width:280px; padding:20px; border-left:5px solid #2e7d32; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
     insertDialog.innerHTML = `
                                 <div style="font-size:24px; margin-bottom:10px;">📍</div>
@@ -14105,7 +14607,9 @@ function showDraftingModal(data) {
     insertOverlay.appendChild(insertDialog);
     document.body.appendChild(insertOverlay);
 
-    document.getElementById("btnCancelInsertNow").onclick = function () { insertOverlay.remove(); };
+    document.getElementById("btnCancelInsertNow").onclick = function () {
+      insertOverlay.remove();
+    };
 
     document.getElementById("btnConfirmInsertNow").onclick = function () {
       var btn = this;
@@ -14114,13 +14618,15 @@ function showDraftingModal(data) {
         var selection = context.document.getSelection();
         var insertedRange = selection.insertText(data.text, "Replace");
         return context.sync();
-      }).then(function () {
-        insertOverlay.remove();
-        showToast("✅ Clause Inserted");
-      }).catch(function (e) {
-        console.error(e);
-        btn.innerText = "Error";
-      });
+      })
+        .then(function () {
+          insertOverlay.remove();
+          showToast("✅ Clause Inserted");
+        })
+        .catch(function (e) {
+          console.error(e);
+          btn.innerText = "Error";
+        });
     };
   };
 }
@@ -14136,7 +14642,10 @@ function runRewriteInChat(instruction) {
   // (pendingRewriteText is set when you click the 'Rewrite' tool button)
   if (typeof pendingRewriteText === "undefined" || !pendingRewriteText) {
     removeBubble(loaderId);
-    addChatBubble("⚠️ Error: No text selected to rewrite. Please select text and click the 'Rewrite' button again.", "ai");
+    addChatBubble(
+      "⚠️ Error: No text selected to rewrite. Please select text and click the 'Rewrite' button again.",
+      "ai",
+    );
     return;
   }
 
@@ -14164,7 +14673,7 @@ function runRewriteInChat(instruction) {
 var currentWorkflowMode = "default";
 function setWorkflowMode(mode, silent) {
   // 1. NORMALIZE: Treat 'all' as 'default' so it matches your saved settings
-  if (mode === 'all') mode = 'default';
+  if (mode === "all") mode = "default";
 
   currentWorkflowMode = mode;
 
@@ -14195,7 +14704,7 @@ function setWorkflowMode(mode, silent) {
   // This ensures newly added apps appear on the correct page immediately
   var newPages = {};
   playlist.forEach(function (key, index) {
-    newPages[key] = (index < 4) ? 1 : 2;
+    newPages[key] = index < 4 ? 1 : 2;
     userSettings.visibleButtons[key] = true;
   });
 
@@ -14209,15 +14718,14 @@ function setWorkflowMode(mode, silent) {
   updateFooterVisuals(mode);
 
   if (!silent) {
-    var label = (mode === 'default') ? "Standard" : mode.charAt(0).toUpperCase() + mode.slice(1);
+    var label = mode === "default" ? "Standard" : mode.charAt(0).toUpperCase() + mode.slice(1);
     showToast(label + " Workflow Loaded");
   }
 }
 
-
 function updateFooterVisuals(mode) {
   // Reset All
-  ['footSegDraft', 'footSegAll', 'footSegReview'].forEach(id => {
+  ["footSegDraft", "footSegAll", "footSegReview"].forEach((id) => {
     var el = document.getElementById(id);
     if (el) {
       el.style.background = "transparent";
@@ -14227,9 +14735,9 @@ function updateFooterVisuals(mode) {
   });
 
   // Set Active
-  var activeId = 'footSegAll'; // Default
-  if (mode === 'draft') activeId = 'footSegDraft';
-  if (mode === 'review') activeId = 'footSegReview';
+  var activeId = "footSegAll"; // Default
+  if (mode === "draft") activeId = "footSegDraft";
+  if (mode === "review") activeId = "footSegReview";
 
   var activeEl = document.getElementById(activeId);
   if (activeEl) {
@@ -14246,7 +14754,7 @@ function updateFooterVisuals(mode) {
 
 window.switchHelpTab = function (tabId) {
   // A. Visuals: Reset Buttons
-  document.querySelectorAll(".help-tab").forEach(t => {
+  document.querySelectorAll(".help-tab").forEach((t) => {
     t.classList.remove("active");
     t.style.borderBottom = "none";
     t.style.color = "#546e7a";
@@ -14265,14 +14773,14 @@ window.switchHelpTab = function (tabId) {
   }
 
   // C. Content Switching
-  document.querySelectorAll(".help-body").forEach(b => {
+  document.querySelectorAll(".help-body").forEach((b) => {
     b.style.display = "none";
   });
 
   var body = document.getElementById("tab-" + tabId);
   if (body) {
     // Chat needs flex layout, others need block
-    body.style.display = (tabId === "bot") ? "flex" : "block";
+    body.style.display = tabId === "bot" ? "flex" : "block";
   }
 };
 
@@ -14342,7 +14850,8 @@ function showHelpCenter() {
 
   var modal = document.createElement("div");
   modal.className = "help-modal";
-  modal.style.cssText = "border-radius: 0px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 1px solid #b0bec5; overflow: hidden; height: 85vh; max-height: 600px; display: flex; flex-direction: column; background: white;";
+  modal.style.cssText =
+    "border-radius: 0px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 1px solid #b0bec5; overflow: hidden; height: 85vh; max-height: 600px; display: flex; flex-direction: column; background: white;";
 
   // --- HEADER ---
   var headerHtml = `
@@ -14488,7 +14997,9 @@ function showHelpCenter() {
   // --- EVENTS ---
 
   // Close
-  document.getElementById("btnCloseHelp").onclick = function () { overlay.remove(); };
+  document.getElementById("btnCloseHelp").onclick = function () {
+    overlay.remove();
+  };
 
   // Chat Logic
   var btnSend = document.getElementById("btnSupportSend");
@@ -14496,13 +15007,15 @@ function showHelpCenter() {
   if (btnSend && input) {
     var send = () => handleSupportChat();
     btnSend.onclick = send;
-    input.onkeydown = (e) => { if (e.key === "Enter") send(); };
+    input.onkeydown = (e) => {
+      if (e.key === "Enter") send();
+    };
   }
 
   // FAQ Toggle Logic
   setTimeout(() => {
     var faqs = document.querySelectorAll(".faq-item");
-    faqs.forEach(item => {
+    faqs.forEach((item) => {
       item.onclick = function () {
         var ans = this.querySelector(".faq-answer");
         if (ans.style.display === "block") {
@@ -14543,25 +15056,27 @@ function parseRobustSupportResponse(responseString) {
   // 1. Try to Parse as JSON (in case AI follows instructions perfectly)
   try {
     // Basic cleanup (Markdown wrappers)
-    var clean = responseString.replace(/```json/g, "").replace(/```/g, "").trim();
+    var clean = responseString
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
 
     // Attempt parse
     var parsed = JSON.parse(clean);
 
     // If it's an object, try to find the best text field to display
-    if (typeof parsed === 'object' && parsed !== null) {
+    if (typeof parsed === "object" && parsed !== null) {
       return {
-        answer: parsed.answer || parsed.content || parsed.response || JSON.stringify(parsed)
+        answer: parsed.answer || parsed.content || parsed.response || JSON.stringify(parsed),
       };
     }
     return { answer: String(parsed) };
-
   } catch (e) {
     // 2. FALLBACK: If Parsing Fails, Treat as Plain Text
     // This is the "Ask ELI" behavior: just show what the AI said.
     return {
       answer: responseString,
-      isFallback: true
+      isFallback: true,
     };
   }
 }
@@ -14581,7 +15096,9 @@ function handleSupportChat() {
   input.value = "";
 
   // Scroll to bottom
-  setTimeout(() => { container.scrollTop = container.scrollHeight; }, 10);
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 10);
 
   // 2. Loading UI
   var loaderId = "sup-load-" + Date.now();
@@ -14593,9 +15110,14 @@ function handleSupportChat() {
   var historyContext = "";
   if (supportHistory.length > 0) {
     var recent = supportHistory.slice(-6);
-    historyContext = "PREVIOUS CHAT:\n" + recent.map(function (item) {
-      return (item.role === "user" ? "User: " : "AI: ") + item.content;
-    }).join("\n") + "\n";
+    historyContext =
+      "PREVIOUS CHAT:\n" +
+      recent
+        .map(function (item) {
+          return (item.role === "user" ? "User: " : "AI: ") + item.content;
+        })
+        .join("\n") +
+      "\n";
   }
 
   var systemPrompt = `
@@ -14623,9 +15145,12 @@ function handleSupportChat() {
       var text = data.answer;
 
       // --- FORMATTING (Convert Markdown to HTML) ---
-      if (typeof text === 'string') {
+      if (typeof text === "string") {
         // Remove code blocks if any remain
-        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        text = text
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
         if (text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1);
 
         // Bold: **text** -> <b>text</b>
@@ -14647,12 +15172,13 @@ function handleSupportChat() {
 
       container.innerHTML += `<div class="chat-bubble chat-ai" style="align-self:flex-start; line-height:1.5;">${text}</div>`;
 
-      setTimeout(() => { container.scrollTop = container.scrollHeight; }, 10);
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 10);
 
       // 6. Save History
       supportHistory.push({ role: "user", content: question });
       supportHistory.push({ role: "ai", content: text });
-
     })
     .catch(function (e) {
       var l = document.getElementById(loaderId);
@@ -14744,7 +15270,7 @@ function createSmartTooltip(e, tool) {
   var rect = e.target.getBoundingClientRect();
   var tipRect = tip.getBoundingClientRect();
   var top = rect.top - tipRect.height - 15;
-  var left = rect.left - (tipRect.width / 2) + (rect.width / 2);
+  var left = rect.left - tipRect.width / 2 + rect.width / 2;
 
   if (top < 10) top = rect.bottom + 15;
   if (left + tipRect.width > window.innerWidth) left = window.innerWidth - tipRect.width - 20;
@@ -14754,10 +15280,16 @@ function createSmartTooltip(e, tool) {
   tip.style.left = left + "px";
 
   // 4. Interaction Handlers
-  tip.onclick = function (ev) { ev.stopPropagation(); };
+  tip.onclick = function (ev) {
+    ev.stopPropagation();
+  };
 
   var closeBtn = tip.querySelector("#btnCloseTip");
-  if (closeBtn) closeBtn.onclick = function (ev) { ev.stopPropagation(); tip.remove(); };
+  if (closeBtn)
+    closeBtn.onclick = function (ev) {
+      ev.stopPropagation();
+      tip.remove();
+    };
 
   // Button Logic
   var goBtn = tip.querySelector("#btnGoToSupport");
@@ -14780,12 +15312,12 @@ function createSmartTooltip(e, tool) {
     tip.remove(); // Close tooltip
 
     // Open Help Center
-    if (typeof showHelpCenter === 'function') {
+    if (typeof showHelpCenter === "function") {
       showHelpCenter();
 
       // Wait for modal to render, then switch tab
       setTimeout(function () {
-        if (typeof switchHelpTab === 'function') switchHelpTab('bot');
+        if (typeof switchHelpTab === "function") switchHelpTab("bot");
 
         var supportInp = document.getElementById("supportInput");
         if (supportInp) {
@@ -14799,10 +15331,10 @@ function createSmartTooltip(e, tool) {
 
   // Close on Outside Click
   setTimeout(() => {
-    document.addEventListener('click', function remover(ev) {
+    document.addEventListener("click", function remover(ev) {
       if (tip && !tip.contains(ev.target)) {
         if (tip.parentNode) tip.remove();
-        document.removeEventListener('click', remover);
+        document.removeEventListener("click", remover);
       }
     });
   }, 100);
@@ -14817,19 +15349,18 @@ function smartFillInput(inp, rawValue) {
 
   // 1. CHECK: Is this a payment/fee field?
   // We check for the class OR the special $! tag
-  var isPayment = inp.classList.contains("payment-input") ||
+  var isPayment =
+    inp.classList.contains("payment-input") ||
     (inp.dataset.target && (inp.dataset.target.indexOf("$![") === 0 || inp.dataset.target.indexOf("![") === 0));
 
   if (isPayment) {
-
     // A. STORE FULL CONTEXT
     inp.dataset.fullTerms = valStr;
     // Actually, let's just show the raw value, but keep fullTerms for the Modal
     inp.value = valStr;
 
-
     inp.title = "Full Schedule: " + valStr;
-    inp.style.backgroundColor = "#e3f2fd";  // Light Blue
+    inp.style.backgroundColor = "#e3f2fd"; // Light Blue
     inp.style.fontWeight = "bold";
 
     inp.oninput = function () {
@@ -14839,7 +15370,6 @@ function smartFillInput(inp, rawValue) {
       this.style.height = "auto";
       this.style.height = this.scrollHeight + "px";
     };
-
   } else {
     // Standard Field
     inp.value = valStr;
@@ -14847,9 +15377,8 @@ function smartFillInput(inp, rawValue) {
     inp.style.fontWeight = "normal";
   }
 
-
   inp.style.borderColor = "#2e7d32";
-  if (inp.classList.contains('auto-expand')) {
+  if (inp.classList.contains("auto-expand")) {
     inp.style.height = "auto";
     inp.style.height = inp.scrollHeight + "px";
   }
@@ -14865,7 +15394,7 @@ function showFileNameSettings() {
   // 1. Defaults
   var defaults = {
     colgate: "[Ref] - CP-[Party] -- [Type] (DRAFT [Date])",
-    hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])"
+    hills: "[Ref] - HPN-[Party] -- [Type] (DRAFT [Date])",
   };
 
   var current = userSettings.fileNamePatterns || defaults;
@@ -14948,7 +15477,8 @@ function showFileNameSettings() {
 
   // --- FOOTER BUTTONS ---
   var footerDiv = document.createElement("div");
-  footerDiv.style.cssText = "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
+  footerDiv.style.cssText =
+    "padding:15px 20px; background:#f8f9fa; border-top:1px solid #e0e0e0; display:flex; gap:10px;";
 
   var btnCancel = document.createElement("button");
   btnCancel.className = "btn-platinum-config";
@@ -14970,7 +15500,7 @@ function showFileNameSettings() {
   btnSave.onclick = () => {
     userSettings.fileNamePatterns = {
       colgate: document.getElementById("patColgate").value,
-      hills: document.getElementById("patHills").value
+      hills: document.getElementById("patHills").value,
     };
     userSettings.highlightFill = document.getElementById("chkHighlightFill").checked;
 
@@ -15024,7 +15554,8 @@ function showAutoFillHub() {
   var btnRunAll = document.createElement("button");
   btnRunAll.className = "btn-platinum-config";
   btnRunAll.innerHTML = "🚀 RUN ALL 4 STEPS";
-  btnRunAll.style.cssText = "width:100%; margin-bottom:15px; background:linear-gradient(to bottom, #e3f2fd 0%, #bbdefb 100%); color:#1565c0; border:1px solid #90caf9; font-weight:800; font-size:12px; padding:12px; box-shadow:0 2px 5px rgba(0,0,0,0.1);";
+  btnRunAll.style.cssText =
+    "width:100%; margin-bottom:15px; background:linear-gradient(to bottom, #e3f2fd 0%, #bbdefb 100%); color:#1565c0; border:1px solid #90caf9; font-weight:800; font-size:12px; padding:12px; box-shadow:0 2px 5px rgba(0,0,0,0.1);";
 
   btnRunAll.onclick = function () {
     // START WIZARD MODE
@@ -15042,8 +15573,14 @@ function showAutoFillHub() {
     card.style.cssText = `padding: 0; border: 1px solid #d1d5db; border-left: 5px solid ${color}; background: #fff; border-radius:0px; margin-bottom: 10px; cursor: pointer; transition: transform 0.2s;`;
 
     card.onclick = action;
-    card.onmouseover = function () { this.style.transform = "translateY(-2px)"; this.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)"; };
-    card.onmouseout = function () { this.style.transform = "translateY(0)"; this.style.boxShadow = "none"; };
+    card.onmouseover = function () {
+      this.style.transform = "translateY(-2px)";
+      this.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
+    };
+    card.onmouseout = function () {
+      this.style.transform = "translateY(0)";
+      this.style.boxShadow = "none";
+    };
 
     card.innerHTML = `
         <div style="padding: 12px 15px;">
@@ -15059,29 +15596,57 @@ function showAutoFillHub() {
   }
 
   // STEP 1
-  var card1 = createStepCard("1", "🏗️", "Build Logic", "Generate custom draft from {{IF}} logic.", function () {
-    runDocumentScannerBuild();
-  }, "#1565c0");
+  var card1 = createStepCard(
+    "1",
+    "🏗️",
+    "Build Logic",
+    "Generate custom draft from {{IF}} logic.",
+    function () {
+      runDocumentScannerBuild();
+    },
+    "#1565c0",
+  );
   out.appendChild(card1);
 
   // STEP 2
-  var card2 = createStepCard("2", "✍️", "Fill Fields", "Populate [Bracketed] placeholders.", function () {
-    runTemplateScan();
-  }, "#2e7d32");
+  var card2 = createStepCard(
+    "2",
+    "✍️",
+    "Fill Fields",
+    "Populate [Bracketed] placeholders.",
+    function () {
+      runTemplateScan();
+    },
+    "#2e7d32",
+  );
   out.appendChild(card2);
 
   // STEP 3
-  var card3 = createStepCard("3", "📝", "Error Check", "Scan for typos & broken references.", function () {
-    // FIX: Pass 'true' as the second argument. 
-    // This activates "Fast Mode", which FORCES Track Changes to be OFF regardless of user settings.
-    runInteractiveErrorCheck(showAutoFillHub, true);
-  }, "#f57f17");
+  var card3 = createStepCard(
+    "3",
+    "📝",
+    "Error Check",
+    "Scan for typos & broken references.",
+    function () {
+      // FIX: Pass 'true' as the second argument.
+      // This activates "Fast Mode", which FORCES Track Changes to be OFF regardless of user settings.
+      runInteractiveErrorCheck(showAutoFillHub, true);
+    },
+    "#f57f17",
+  );
   out.appendChild(card3);
 
   // STEP 4
-  var card4 = createStepCard("4", "💾", "Save and/or Send", "Finalize document and draft email.", function () {
-    showSaveAsManager();
-  }, "#7b1fa2");
+  var card4 = createStepCard(
+    "4",
+    "💾",
+    "Save and/or Send",
+    "Finalize document and draft email.",
+    function () {
+      showSaveAsManager();
+    },
+    "#7b1fa2",
+  );
   out.appendChild(card4);
 
   // HOME
@@ -15134,23 +15699,19 @@ function runDocumentScannerBuild() {
       // Handle Logic Blocks (IF/ELSE/ENDIF) - These don't have formatters
       if (text.startsWith("IF:")) {
         logicStack.push(text.substring(3).trim());
-      }
-      else if (text.startsWith("ELSEIF:")) {
+      } else if (text.startsWith("ELSEIF:")) {
         if (logicStack.length > 0) {
           logicStack.pop();
           logicStack.push(text.substring(7).trim());
         }
-      }
-      else if (text.startsWith("ELSE")) {
+      } else if (text.startsWith("ELSE")) {
         if (logicStack.length > 0) {
           logicStack.pop();
           logicStack.push("true");
         }
-      }
-      else if (text.startsWith("ENDIF")) {
+      } else if (text.startsWith("ENDIF")) {
         if (logicStack.length > 0) logicStack.pop();
-      }
-      else if (text.startsWith("DEF:")) {
+      } else if (text.startsWith("DEF:")) {
         // Definitions are special: DEF:Key|Options
         if (text.includes("|")) {
           parseLogicDefinition(text, logicStack);
@@ -15163,8 +15724,7 @@ function runDocumentScannerBuild() {
 
     setLoading(false);
     renderLogicBuilderForm(logicCount, docTitle);
-
-  }).catch(e => {
+  }).catch((e) => {
     setLoading(false);
     showOutput("Scanner Error: " + e.message, true);
   });
@@ -15197,8 +15757,8 @@ function parseLogicDefinition(rawText, currentStack) {
   logicFoundDefinitions[key] = {
     default: finalDefault,
     isText: isTextMode,
-    options: isTextMode ? [] : optionsPart.split(",").map(o => o.trim()),
-    warning: warningText
+    options: isTextMode ? [] : optionsPart.split(",").map((o) => o.trim()),
+    warning: warningText,
   };
 
   if (currentStack.length > 0) {
@@ -15275,7 +15835,8 @@ function renderLogicBuilderForm(count, docTitle) {
       let helpText = document.createElement("div");
       helpText.innerText = "Free Form Entry - leave as 'Don't know' if you are not sure of the answer.";
       // Green color, pulled up closer to label (-6px margin)
-      helpText.style.cssText = "font-size: 9px; color: #2e7d32; font-style: italic; margin-top: -6px; margin-bottom: 4px;";
+      helpText.style.cssText =
+        "font-size: 9px; color: #2e7d32; font-style: italic; margin-top: -6px; margin-bottom: 4px;";
       group.appendChild(helpText);
       // ------------------------
 
@@ -15296,7 +15857,7 @@ function renderLogicBuilderForm(count, docTitle) {
       inputEl.className = "audience-select logic-input";
       inputEl.style.width = "100%";
 
-      def.options.forEach(opt => {
+      def.options.forEach((opt) => {
         let o = document.createElement("option");
         o.value = opt;
         o.innerText = opt;
@@ -15317,7 +15878,8 @@ function renderLogicBuilderForm(count, docTitle) {
 
   var btnGen = document.createElement("button");
   btnGen.className = "btn-platinum-config primary";
-  btnGen.style.cssText = "width:calc(100% - 30px); margin:20px 15px; background:#1565c0; color:white; border-bottom:3px solid #0d47a1; padding:12px; font-size:12px;";
+  btnGen.style.cssText =
+    "width:calc(100% - 30px); margin:20px 15px; background:#1565c0; color:white; border-bottom:3px solid #0d47a1; padding:12px; font-size:12px;";
   btnGen.innerText = "🚀 GENERATE DOCUMENT";
   btnGen.onclick = generateDocumentFromLogic;
   out.appendChild(btnGen);
@@ -15328,7 +15890,7 @@ function renderLogicBuilderForm(count, docTitle) {
 function updateLogicVisibility() {
   let currentAnswers = {};
   const inputs = document.querySelectorAll(".logic-input");
-  inputs.forEach(input => currentAnswers[input.getAttribute("data-key")] = input.value);
+  inputs.forEach((input) => (currentAnswers[input.getAttribute("data-key")] = input.value));
 
   for (let key in logicFieldDependencies) {
     let rules = logicFieldDependencies[key];
@@ -15390,12 +15952,13 @@ async function generateDocumentFromLogic() {
   let userAnswers = {};
   try {
     const inputs = document.querySelectorAll(".logic-input");
-    inputs.forEach(i => userAnswers[i.getAttribute("data-key")] = i.value);
-  } catch (e) { console.warn("Input capture warning:", e); }
+    inputs.forEach((i) => (userAnswers[i.getAttribute("data-key")] = i.value));
+  } catch (e) {
+    console.warn("Input capture warning:", e);
+  }
 
   try {
     await Word.run(async (context) => {
-
       // ➤ FORCE TRACK CHANGES OFF (Clean Build)
       context.document.changeTrackingMode = "Off";
 
@@ -15425,7 +15988,10 @@ async function generateDocumentFromLogic() {
           if (formatter === "UPPER") finalValue = finalValue.toUpperCase();
           else if (formatter === "LOWER") finalValue = finalValue.toLowerCase();
           else if (formatter === "TITLE") {
-            finalValue = finalValue.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            finalValue = finalValue.replace(
+              /\w\S*/g,
+              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
+            );
           }
           // --- UPDATED INSERTION LOGIC ---
 
@@ -15501,8 +16067,8 @@ async function generateDocumentFromLogic() {
         let aText = abovePara.text;
 
         // A line is "Empty" if it has no text AND no secret {{ENTER}} token
-        let isCurrentEmpty = (cText.trim().length === 0 && !cText.includes("\u200B") && !cText.includes('\f'));
-        let isAboveEmpty = (aText.trim().length === 0 && !aText.includes("\u200B") && !aText.includes('\f'));
+        let isCurrentEmpty = cText.trim().length === 0 && !cText.includes("\u200B") && !cText.includes("\f");
+        let isAboveEmpty = aText.trim().length === 0 && !aText.includes("\u200B") && !aText.includes("\f");
 
         // If THIS line is empty AND the one above is empty -> Delete THIS one.
         // This collapses the stack from bottom-up until only 1 remains.
@@ -15555,22 +16121,19 @@ async function runSegmentedLogic(context, answers) {
       let block = { segments: [], startTagIndex: i, depth: blockStack.length };
       block.segments.push({ condition: txt.substring(3).trim(), tagIndex: i });
       blockStack.push(block);
-    }
-    else if (txt.startsWith("ELSEIF:")) {
+    } else if (txt.startsWith("ELSEIF:")) {
       let block = blockStack.length > 0 ? blockStack[blockStack.length - 1] : null;
       if (block) {
         block.segments[block.segments.length - 1].endTagIndex = i;
         block.segments.push({ condition: txt.substring(7).trim(), tagIndex: i });
       }
-    }
-    else if (txt.startsWith("ELSE")) {
+    } else if (txt.startsWith("ELSE")) {
       let block = blockStack.length > 0 ? blockStack[blockStack.length - 1] : null;
       if (block) {
         block.segments[block.segments.length - 1].endTagIndex = i;
         block.segments.push({ condition: "true", tagIndex: i });
       }
-    }
-    else if (txt.startsWith("ENDIF")) {
+    } else if (txt.startsWith("ENDIF")) {
       let block = blockStack.pop();
       if (block) {
         block.segments[block.segments.length - 1].endTagIndex = i;
@@ -15626,7 +16189,7 @@ function requireUserName(callback) {
     currentName = userSettings.emailTemplates.myName.trim();
   }
 
-  // 2. CHECK: Only check if it is empty. 
+  // 2. CHECK: Only check if it is empty.
   // (Removed the check !== "Andrew" so it now accepts Andrew as a valid name)
   if (currentName.length > 0) {
     callback();
@@ -15635,11 +16198,13 @@ function requireUserName(callback) {
 
   // 3. If missing, show Modal
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2147483647; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2147483647; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var dialog = document.createElement("div");
   dialog.className = "tool-box slide-in";
-  dialog.style.cssText = "background:white; width:300px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
+  dialog.style.cssText =
+    "background:white; width:300px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
 
   dialog.innerHTML = `
                                                         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 15px; border-bottom: 3px solid #c9a227;">
@@ -15662,7 +16227,9 @@ function requireUserName(callback) {
   document.body.appendChild(overlay);
 
   // Focus input
-  setTimeout(function () { document.getElementById("setupFirstName").focus(); }, 100);
+  setTimeout(function () {
+    document.getElementById("setupFirstName").focus();
+  }, 100);
 
   // Bind Save
   document.getElementById("btnSaveNameSetup").onclick = function () {
@@ -15801,37 +16368,37 @@ function runWelcomeAnimation(onCompleteCallback) {
       duration: 3500, // Scene 1: Welcome
       html: `<div class="gavel-icon">⚖️<div class="gavel-ripple"></div></div>
                                                         <div class="tour-title">Welcome to ELI</div>
-                                                        <div class="tour-subtitle">Where <strong>Legal Analysis</strong> meets <strong>Artificial Intelligence</strong>.</div>`
+                                                        <div class="tour-subtitle">Where <strong>Legal Analysis</strong> meets <strong>Artificial Intelligence</strong>.</div>`,
     },
     {
       duration: 3000, // Scene 2: Drafting
       html: `<div class="block-container"><div class="block"></div><div class="block"></div><div class="block"></div><div class="block"></div></div>
                                                         <div class="tour-title">Drafting Assistant</div>
-                                                        <div class="tour-subtitle">Building complex drafts automatically from your templates.</div>`
+                                                        <div class="tour-subtitle">Building complex drafts automatically from your templates.</div>`,
     },
     {
       duration: 3500, // Scene 3: Playbook
       html: `<div class="book-icon">📖<div class="ai-badge">🤖</div></div>
                                                         <div class="tour-title">Review Assistant</div>
-                                                        <div class="tour-subtitle">Checking documents against <strong>Colgate's Playbook</strong> and providing fallbacks.</div>`
+                                                        <div class="tour-subtitle">Checking documents against <strong>Colgate's Playbook</strong> and providing fallbacks.</div>`,
     },
     {
       duration: 3000, // Scene 4: Analysis
       html: `<div class="doc-scan"><div class="scan-line"></div><div class="bug-dot"></div></div>
                                                         <div class="tour-title">Legal Analysis</div>
-                                                        <div class="tour-subtitle">Identifying grammatical erros, legal risks, missing clauses, and definitions instantly.</div>`
+                                                        <div class="tour-subtitle">Identifying grammatical erros, legal risks, missing clauses, and definitions instantly.</div>`,
     },
     {
       duration: 3000, // Scene 5: Redlines
       html: `<div class="redline-box"><span class="txt-del">Mutual</span><span class="txt-add">One-Way</span></div>
                                                         <div class="tour-title">Redline Review and Document Comparison</div>
-                                                        <div class="tour-subtitle">Use AI to explain the redlines or compare to another version.</div>`
+                                                        <div class="tour-subtitle">Use AI to explain the redlines or compare to another version.</div>`,
     },
     {
       duration: 2500, // Scene 6: Email
       html: `<div class="plane-icon">📧</div>
                                                         <div class="tour-title">Auto Email</div>
-                                                        <div class="tour-subtitle">Preparing emails to counterparties for you.</div>`
+                                                        <div class="tour-subtitle">Preparing emails to counterparties for you.</div>`,
     },
     {
       duration: 0, // Scene 7: Finale (Stops here)
@@ -15842,8 +16409,8 @@ function runWelcomeAnimation(onCompleteCallback) {
 
                                                         <div style="background:#fff3cd; color:#856404; padding:12px; border-radius:0px; font-size:12px; margin-top:20px; text-align:center; border:1px solid #ffeeba; line-height:1.4; opacity:0; animation: tourFadeIn 1s ease 1s forwards;">
                                                           ⚠️ <b>HEADS UP:</b><br>Please expand the size of this plugin window to get the most out of ELI!
-                                                        </div>`
-    }
+                                                        </div>`,
+    },
   ];
 
   // 3. Play Function
@@ -15877,7 +16444,9 @@ function runWelcomeAnimation(onCompleteCallback) {
 
       // Schedule next scene
       if (scene.duration > 0) {
-        timer = window.setTimeout(function () { playScene(index + 1); }, scene.duration);
+        timer = window.setTimeout(function () {
+          playScene(index + 1);
+        }, scene.duration);
       }
     } catch (e) {
       console.error("Animation Error:", e);
@@ -15886,7 +16455,9 @@ function runWelcomeAnimation(onCompleteCallback) {
 
   // Start immediately
   // Delay slightly to ensure DOM render
-  window.setTimeout(function () { playScene(0); }, 50);
+  window.setTimeout(function () {
+    playScene(0);
+  }, 50);
 }
 
 function showOnboardingSetup() {
@@ -15895,7 +16466,8 @@ function showOnboardingSetup() {
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "onboardingOverlay";
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:20000; display:flex; justify-content:center; align-items:center; overflow-y:auto;";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:20000; display:flex; justify-content:center; align-items:center; overflow-y:auto;";
     document.body.appendChild(overlay);
   }
   overlay.innerHTML = "";
@@ -15903,7 +16475,8 @@ function showOnboardingSetup() {
   // Welcome Card
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "width:95%; max-width:700px; min-height:600px; padding:0; border:1px solid #d1d5db; background:#fff; border-radius:0px; overflow:hidden; border-top:5px solid #1565c0; box-shadow: 0 10px 30px rgba(0,0,0,0.25);";
+  card.style.cssText =
+    "width:95%; max-width:700px; min-height:600px; padding:0; border:1px solid #d1d5db; background:#fff; border-radius:0px; overflow:hidden; border-top:5px solid #1565c0; box-shadow: 0 10px 30px rgba(0,0,0,0.25);";
 
   var header = document.createElement("div");
   header.style.cssText = "padding:20px; text-align:center; background:#f0f4f8;";
@@ -15918,7 +16491,8 @@ function showOnboardingSetup() {
   body.style.padding = "20px";
 
   // 1. Full Name
-  var curName = (userSettings.emailTemplates && userSettings.emailTemplates.myName) ? userSettings.emailTemplates.myName : "";
+  var curName =
+    userSettings.emailTemplates && userSettings.emailTemplates.myName ? userSettings.emailTemplates.myName : "";
   body.innerHTML += `
                                                         <label class="tool-label">Full Name</label>
                                                         <input type="text" id="obName" class="tool-input" value="${curName}" placeholder="e.g. John Doe" style="margin-bottom:15px;">
@@ -15975,7 +16549,8 @@ function showOnboardingSetup() {
   // Error Message Container
   var errorMsg = document.createElement("div");
   errorMsg.id = "obErrorMsg";
-  errorMsg.style.cssText = "color:#d32f2f; font-size:11px; font-weight:700; text-align:center; margin-bottom:10px; display:none;";
+  errorMsg.style.cssText =
+    "color:#d32f2f; font-size:11px; font-weight:700; text-align:center; margin-bottom:10px; display:none;";
   body.appendChild(errorMsg);
 
   // Next Button
@@ -16021,7 +16596,9 @@ function saveOnboardingSetup() {
   var group = document.getElementById("obGroup").value;
   var monitorEls = document.getElementsByName("obMonitor");
   var mode = "regular";
-  for (var i = 0; i < monitorEls.length; i++) { if (monitorEls[i].checked) mode = monitorEls[i].value; }
+  for (var i = 0; i < monitorEls.length; i++) {
+    if (monitorEls[i].checked) mode = monitorEls[i].value;
+  }
 
   // Save Settings
   if (!userSettings.emailTemplates) userSettings.emailTemplates = {};
@@ -16036,18 +16613,30 @@ function saveOnboardingSetup() {
     // Laptop Mode: Unpin Toolbar (Save Space) + Compact Mode
     userSettings.pinToolbar = false;
     var chkPin = document.getElementById("chkPinToolbar");
-    if (chkPin) { chkPin.checked = false; if (chkPin.onchange) chkPin.onchange(); }
+    if (chkPin) {
+      chkPin.checked = false;
+      if (chkPin.onchange) chkPin.onchange();
+    }
 
     var chkLap = document.getElementById("chkLaptopMode");
-    if (chkLap) { chkLap.checked = true; if (chkLap.onchange) chkLap.onchange(); }
+    if (chkLap) {
+      chkLap.checked = true;
+      if (chkLap.onchange) chkLap.onchange();
+    }
   } else {
     // Monitor Mode: Pin Toolbar (Easy Access) + Normal Mode
     userSettings.pinToolbar = true;
     var chkPin = document.getElementById("chkPinToolbar");
-    if (chkPin) { chkPin.checked = true; if (chkPin.onchange) chkPin.onchange(); }
+    if (chkPin) {
+      chkPin.checked = true;
+      if (chkPin.onchange) chkPin.onchange();
+    }
 
     var chkLap = document.getElementById("chkLaptopMode");
-    if (chkLap) { chkLap.checked = false; if (chkLap.onchange) chkLap.onchange(); }
+    if (chkLap) {
+      chkLap.checked = false;
+      if (chkLap.onchange) chkLap.onchange();
+    }
   }
 
   saveCurrentSettings(true); // Intermediate save
@@ -16062,14 +16651,16 @@ function showOnboardingTour(fullName) {
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "onboardingOverlay";
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:20000; display:flex; justify-content:center; align-items:center; overflow-y:auto;";
+    overlay.style.cssText =
+      "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:20000; display:flex; justify-content:center; align-items:center; overflow-y:auto;";
     document.body.appendChild(overlay);
   }
   overlay.innerHTML = "";
 
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "width:95%; max-width:700px; min-height:600px; padding:0; border:1px solid #d1d5db; background:#fff; border-radius:0px; overflow:hidden; border-top:5px solid #d32f2f; box-shadow: 0 10px 30px rgba(0,0,0,0.25);";
+  card.style.cssText =
+    "width:95%; max-width:700px; min-height:600px; padding:0; border:1px solid #d1d5db; background:#fff; border-radius:0px; overflow:hidden; border-top:5px solid #d32f2f; box-shadow: 0 10px 30px rgba(0,0,0,0.25);";
 
   var header = document.createElement("div");
   header.style.cssText = "padding:20px; text-align:center; background:#fff5f5;";
@@ -16088,13 +16679,25 @@ function showOnboardingTour(fullName) {
 
   var tips = [
     { icon: "🟥", text: "If you get stuck, click the <b>Red ELI Bar</b> at the top to return Home anytime." },
-    { icon: "🔄", text: "Need help? Click the <b>ELI Spinning Logo</b> in the top left (or the mini '?' icon in a button) for Help." },
-    { icon: "⚙️", text: "Want to customize? Click the <b>Gear Icon</b> in the main bar or in a button to access Settings and the ELI Store. There, you can fully customize your home screen, toolbar and button order as well as add new apps." },
-    { icon: "👇", text: "Use <b>Draft & Review</b> modes at the bottom for tailored workflows. These can be further customized." },
-    { icon: "🦶", text: "The <b>Footer</b> is where you upload your data and save/view versions of your agreement. Click <b>Data</b> to upload Agreement Data (e.g. from OARS), while the 📷 takes a <b>Snapshot</b> to save to your <b>Versions</b> list." }
+    {
+      icon: "🔄",
+      text: "Need help? Click the <b>ELI Spinning Logo</b> in the top left (or the mini '?' icon in a button) for Help.",
+    },
+    {
+      icon: "⚙️",
+      text: "Want to customize? Click the <b>Gear Icon</b> in the main bar or in a button to access Settings and the ELI Store. There, you can fully customize your home screen, toolbar and button order as well as add new apps.",
+    },
+    {
+      icon: "👇",
+      text: "Use <b>Draft & Review</b> modes at the bottom for tailored workflows. These can be further customized.",
+    },
+    {
+      icon: "🦶",
+      text: "The <b>Footer</b> is where you upload your data and save/view versions of your agreement. Click <b>Data</b> to upload Agreement Data (e.g. from OARS), while the 📷 takes a <b>Snapshot</b> to save to your <b>Versions</b> list.",
+    },
   ];
 
-  tips.forEach(t => {
+  tips.forEach((t) => {
     var row = document.createElement("div");
     row.style.cssText = "display:flex; gap:10px; margin-bottom:15px; align-items:flex-start;";
     row.innerHTML = `
@@ -16132,18 +16735,19 @@ function finishOnboarding() {
 function selectObMonitor(el, val) {
   var radios = document.getElementsByName("obMonitor");
   for (var i = 0; i < radios.length; i++) {
-    radios[i].parentElement.style.background = '#f5f5f5';
-    radios[i].parentElement.style.borderColor = '#ddd';
+    radios[i].parentElement.style.background = "#f5f5f5";
+    radios[i].parentElement.style.borderColor = "#ddd";
   }
-  el.style.background = '#e3f2fd';
-  el.style.borderColor = '#2196f3';
-  el.querySelector('input').checked = true;
+  el.style.background = "#e3f2fd";
+  el.style.borderColor = "#2196f3";
+  el.querySelector("input").checked = true;
 }
 
 function updateFooterName() {
   var span = document.getElementById("footerMyName");
   var headerSpan = document.getElementById("headerMyName");
-  var name = (userSettings.emailTemplates && userSettings.emailTemplates.myName) ? userSettings.emailTemplates.myName : "User";
+  var name =
+    userSettings.emailTemplates && userSettings.emailTemplates.myName ? userSettings.emailTemplates.myName : "User";
 
   if (span) span.innerText = " " + name;
   if (headerSpan) headerSpan.innerText = name;
@@ -16180,11 +16784,13 @@ window.openDocumentViewer = async function () {
   if (!modal) {
     modal = document.createElement("div");
     modal.id = id;
-    modal.style.cssText = "position:fixed; top:80px; left:80px; width:700px; height:650px; background:white; border:1px solid #455a64; box-shadow:0 25px 50px rgba(0,0,0,0.5); z-index:99999; display:flex; flex-direction:column; resize:both; overflow:hidden; border-radius:6px;";
+    modal.style.cssText =
+      "position:fixed; top:80px; left:80px; width:700px; height:650px; background:white; border:1px solid #455a64; box-shadow:0 25px 50px rgba(0,0,0,0.5); z-index:99999; display:flex; flex-direction:column; resize:both; overflow:hidden; border-radius:6px;";
 
     // Header
     var header = document.createElement("div");
-    header.style.cssText = "padding:10px 15px; background:#263238; color:white; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; border-bottom:1px solid #37474f;";
+    header.style.cssText =
+      "padding:10px 15px; background:#263238; color:white; cursor:move; display:flex; justify-content:space-between; align-items:center; user-select:none; border-bottom:1px solid #37474f;";
     header.innerHTML = `<div style="display:flex;align-items:center;gap:6px;">
                                                               <span style="font-size:16px;">📄</span>
                                                               <span style="font-weight:700; font-size:12px; letter-spacing:0.5px; text-transform:uppercase;">Document Viewer</span>
@@ -16195,7 +16801,7 @@ window.openDocumentViewer = async function () {
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     header.onmousedown = function (e) {
-      if (e.target.tagName === 'BUTTON') return;
+      if (e.target.tagName === "BUTTON") return;
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -16204,17 +16810,21 @@ window.openDocumentViewer = async function () {
       document.onmousemove = function (e) {
         if (!isDragging) return;
         e.preventDefault();
-        modal.style.left = (initialLeft + e.clientX - startX) + "px";
-        modal.style.top = (initialTop + e.clientY - startY) + "px";
+        modal.style.left = initialLeft + e.clientX - startX + "px";
+        modal.style.top = initialTop + e.clientY - startY + "px";
       };
-      document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+      document.onmouseup = function () {
+        isDragging = false;
+        document.onmousemove = null;
+      };
     };
 
     modal.appendChild(header);
 
     // Toolbar
     var toolRow = document.createElement("div");
-    toolRow.style.cssText = "padding:8px 12px; background:#eceff1; border-bottom:1px solid #cfd8dc; display:flex; gap:8px; align-items:center;";
+    toolRow.style.cssText =
+      "padding:8px 12px; background:#eceff1; border-bottom:1px solid #cfd8dc; display:flex; gap:8px; align-items:center;";
     toolRow.innerHTML = `
                                                             <button id="btnViewFull" onclick="window.viewDocTab('full')" class="btn-tab-active" style="padding:4px 8px; border:1px solid #b0bec5; cursor:pointer; font-size:11px; font-weight:700; border-radius:3px;">📄 Full Document</button>
                                                             <button id="btnViewAI" onclick="window.viewDocTab('ai')" class="btn-tab" style="padding:4px 8px; border:1px solid transparent; cursor:pointer; font-size:11px; font-weight:700; color:#546e7a; background:transparent;">⚡ Formatted Data</button>
@@ -16226,7 +16836,8 @@ window.openDocumentViewer = async function () {
     // Content
     var content = document.createElement("div");
     content.id = id + "Content";
-    content.style.cssText = "flex:1; overflow:auto; padding:0; font-family:'Calibri', 'Inter', sans-serif; font-size:14px; background:#f5f5f5; line-height:1.5; position:relative;";
+    content.style.cssText =
+      "flex:1; overflow:auto; padding:0; font-family:'Calibri', 'Inter', sans-serif; font-size:14px; background:#f5f5f5; line-height:1.5; position:relative;";
     modal.appendChild(content);
 
     document.body.appendChild(modal);
@@ -16239,7 +16850,7 @@ window.openDocumentViewer = async function () {
 
   window.refreshDocViewer = function () {
     // Logic below
-    window.viewDocTab(window.currentViewMode || 'ai', true);
+    window.viewDocTab(window.currentViewMode || "ai", true);
   };
 
   window.viewDocTab = function (mode, forceRefresh) {
@@ -16249,13 +16860,17 @@ window.openDocumentViewer = async function () {
     var btnFull = document.getElementById("btnViewFull");
     var btnAI = document.getElementById("btnViewAI");
 
-    if (mode === 'full') {
-      btnFull.style.cssText = "padding:4px 8px; border:1px solid #b0bec5; cursor:pointer; font-size:11px; font-weight:700; border-radius:3px; background:#fff; color:#000;";
-      btnAI.style.cssText = "padding:4px 8px; border:1px solid transparent; cursor:pointer; font-size:11px; font-weight:700; color:#546e7a; background:transparent;";
+    if (mode === "full") {
+      btnFull.style.cssText =
+        "padding:4px 8px; border:1px solid #b0bec5; cursor:pointer; font-size:11px; font-weight:700; border-radius:3px; background:#fff; color:#000;";
+      btnAI.style.cssText =
+        "padding:4px 8px; border:1px solid transparent; cursor:pointer; font-size:11px; font-weight:700; color:#546e7a; background:transparent;";
       loadAndRenderFull(forceRefresh);
     } else {
-      btnAI.style.cssText = "padding:4px 8px; border:1px solid #1565c0; cursor:pointer; font-size:11px; font-weight:700; border-radius:3px; background:#e3f2fd; color:#1565c0;";
-      btnFull.style.cssText = "padding:4px 8px; border:1px solid transparent; cursor:pointer; font-size:11px; font-weight:700; color:#546e7a; background:transparent;";
+      btnAI.style.cssText =
+        "padding:4px 8px; border:1px solid #1565c0; cursor:pointer; font-size:11px; font-weight:700; border-radius:3px; background:#e3f2fd; color:#1565c0;";
+      btnFull.style.cssText =
+        "padding:4px 8px; border:1px solid transparent; cursor:pointer; font-size:11px; font-weight:700; color:#546e7a; background:transparent;";
       loadAndRenderAI(forceRefresh);
     }
   };
@@ -16264,18 +16879,21 @@ window.openDocumentViewer = async function () {
   async function loadAndRenderFull(force) {
     var out = document.getElementById(id + "Content");
     // If already has content and not forced, skip
-    if (!force && out.dataset.mode === 'full' && out.innerHTML.length > 100) return;
+    if (!force && out.dataset.mode === "full" && out.innerHTML.length > 100) return;
 
-    out.dataset.mode = 'full';
+    out.dataset.mode = "full";
     out.innerHTML = `<div style="text-align:center; padding:40px; color:#546e7a;">
                                                               <div class="spinner" style="width:24px;height:24px;border-width:3px;display:inline-block;margin-bottom:10px;"></div><br>
                                                                 Loading Full Document...
                                                             </div>`;
 
     try {
-      var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+      var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
       var record = await PROMPTS.loadDocFromDB(uniqueKey);
-      if (!record || !record.data) { showEmptyState(out); return; }
+      if (!record || !record.data) {
+        showEmptyState(out);
+        return;
+      }
 
       if (record.name.toLowerCase().endsWith(".docx")) {
         if (typeof mammoth === "undefined") {
@@ -16300,9 +16918,9 @@ window.openDocumentViewer = async function () {
   // --- RENDER 2: SMART AI CHANGES ---
   async function loadAndRenderAI(force) {
     var out = document.getElementById(id + "Content");
-    if (!force && out.dataset.mode === 'ai' && out.innerHTML.length > 100) return;
+    if (!force && out.dataset.mode === "ai" && out.innerHTML.length > 100) return;
 
-    out.dataset.mode = 'ai';
+    out.dataset.mode = "ai";
     out.innerHTML = `<div style="text-align:center; padding:40px; color:#1565c0;">
                                                               <div class="spinner" style="width:24px;height:24px;border-width:3px;border-color:#1565c0 transparent #1565c0 transparent; display:inline-block;margin-bottom:10px;"></div><br>
                                                                 <strong>Analyze & Filter Rows</strong><br>
@@ -16310,9 +16928,12 @@ window.openDocumentViewer = async function () {
                                                                 </div>`;
 
     try {
-      var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+      var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
       var record = await PROMPTS.loadDocFromDB(uniqueKey);
-      if (!record || !record.data) { showEmptyState(out); return; }
+      if (!record || !record.data) {
+        showEmptyState(out);
+        return;
+      }
 
       // --- 0. CACHE HIT CHECK (Instant Load) ---
       if (record.aiCache && Array.isArray(record.aiCache)) {
@@ -16329,7 +16950,7 @@ window.openDocumentViewer = async function () {
 
       // 1. STRATEGY CHANGE: Convert DOCX to HTML for faster, robust text analysis
       var contextContent = "";
-      var mimeToSend = 'text/html';
+      var mimeToSend = "text/html";
 
       if (record.name.toLowerCase().endsWith(".docx")) {
         if (typeof mammoth === "undefined") {
@@ -16348,20 +16969,20 @@ window.openDocumentViewer = async function () {
         var blob = new Blob([record.data], { type: "application/pdf" });
         var reader = new FileReader();
         reader.onloadend = function () {
-          runGeminiAnalysis(reader.result.split(',')[1], 'application/pdf');
+          runGeminiAnalysis(reader.result.split(",")[1], "application/pdf");
         };
         reader.readAsDataURL(blob);
         return;
       } else {
         var dec = new TextDecoder("utf-8");
         contextContent = dec.decode(record.data);
-        mimeToSend = 'text/plain';
+        mimeToSend = "text/plain";
       }
 
       runGeminiAnalysis(contextContent, mimeToSend);
 
       async function runGeminiAnalysis(dataContent, mimeType) {
-        const isText = mimeType.startsWith('text');
+        const isText = mimeType.startsWith("text");
         const prompt = `
                                                                 Analyze this document table/content.
                                                                 TASK: Extract pairs of Field (Left) and Data (Right) from the document.
@@ -16396,7 +17017,7 @@ window.openDocumentViewer = async function () {
                                                                     </tr>`;
 
             json.forEach((row, i) => {
-              var bg = i % 2 === 0 ? '#fff' : '#fafafa';
+              var bg = i % 2 === 0 ? "#fff" : "#fafafa";
               // Handle potential key variations from AI
               var left = row.field || row.left || row.Field || "";
               var right = row.data || row.right || row.Data || "";
@@ -16417,7 +17038,7 @@ window.openDocumentViewer = async function () {
         } catch (apiErr) {
           out.innerHTML = `<div style="color:red; padding:20px;">AI Analysis Error: ${apiErr.message}</div>`;
         }
-      };
+      }
     } catch (e) {
       out.innerHTML = `<div style="color:red; padding:20px;">System Error: ${e.message}</div>`;
     }
@@ -16431,7 +17052,7 @@ window.openDocumentViewer = async function () {
                                                                     </tr>`;
 
       json.forEach((row, i) => {
-        var bg = i % 2 === 0 ? '#fff' : '#fafafa';
+        var bg = i % 2 === 0 ? "#fff" : "#fafafa";
         var left = row.field || row.left || row.Field || "";
         var right = row.data || row.right || row.Data || "";
 
@@ -16459,31 +17080,37 @@ window.openDocumentViewer = async function () {
   }
 
   // Trigger Default Load
-  window.viewDocTab('ai'); // Default to AI
+  window.viewDocTab("ai"); // Default to AI
   // --- GLOBAL FIX: ENSURE FOOTER CLOSE WIPES STATE ---
   // --- GLOBAL FIX: ENSURE FOOTER CLOSE WIPES STATE (SAFER VERSION) ---
-  if (typeof document !== 'undefined') {
-    document.body.addEventListener('click', function (e) {
+  if (typeof document !== "undefined") {
+    document.body.addEventListener("click", function (e) {
       var target = e.target;
-      if (target.id === 'btnDeleteFile' || target.closest('#btnDeleteFile')) {
-
+      if (target.id === "btnDeleteFile" || target.closest("#btnDeleteFile")) {
         console.log("🗑️ Footer Delete Clicked. Wiping DB & State...");
 
         // 1. Wipe IndexedDB
-        var uniqueKey = window.CURRENT_DOC_ID || 'currentDoc';
+        var uniqueKey = window.CURRENT_DOC_ID || "currentDoc";
 
-        if (typeof PROMPTS !== 'undefined' && PROMPTS.deleteDocFromDB) {
+        if (typeof PROMPTS !== "undefined" && PROMPTS.deleteDocFromDB) {
           PROMPTS.deleteDocFromDB(uniqueKey);
           PROMPTS.saveAICacheToDB(uniqueKey, null);
         }
 
         // 2. Wipe Office Settings (Persistent)
         try {
-          if (typeof Office !== 'undefined' && Office.context && Office.context.document && Office.context.document.settings) {
+          if (
+            typeof Office !== "undefined" &&
+            Office.context &&
+            Office.context.document &&
+            Office.context.document.settings
+          ) {
             Office.context.document.settings.remove("AgreementDataDetails");
             Office.context.document.settings.saveAsync();
           }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+          console.error(err);
+        }
 
         // 3. Update UI Visuals immediately
         if (window.clearLoadedFile) window.clearLoadedFile();
@@ -16507,7 +17134,9 @@ function renderVersionTimeline(container) {
 
     // Sort & Number (Newest First)
     versions.sort((a, b) => a.timestamp - b.timestamp);
-    versions.forEach((v, index) => { v.displayNumber = index + 1; });
+    versions.forEach((v, index) => {
+      v.displayNumber = index + 1;
+    });
     versions.reverse();
 
     versions.forEach((v) => {
@@ -16516,7 +17145,10 @@ function renderVersionTimeline(container) {
       node.style.cssText = `background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #1565c0; padding: 10px; margin-bottom: 8px; position: relative;`;
 
       let dateStr = new Date(v.timestamp).toLocaleString();
-      let activeBadge = (v.sessionId === CURRENT_SESSION_ID) ? `<span style="background:#e3f2fd; color:#1565c0; font-weight:bold; font-size:9px; padding:2px 4px; border-radius:2px; margin-left:5px;">CURRENT</span>` : "";
+      let activeBadge =
+        v.sessionId === CURRENT_SESSION_ID
+          ? `<span style="background:#e3f2fd; color:#1565c0; font-weight:bold; font-size:9px; padding:2px 4px; border-radius:2px; margin-left:5px;">CURRENT</span>`
+          : "";
 
       // Header
       let headerRow = document.createElement("div");
@@ -16535,22 +17167,28 @@ function renderVersionTimeline(container) {
       let btnDiv = document.createElement("div");
       let delBtn = document.createElement("button");
       delBtn.innerHTML = "🗑️";
-      delBtn.style.cssText = "background:transparent; border:none; cursor:pointer; font-size:12px; padding:4px; position:relative; z-index:999;";
+      delBtn.style.cssText =
+        "background:transparent; border:none; cursor:pointer; font-size:12px; padding:4px; position:relative; z-index:999;";
 
       delBtn.onclick = function (e) {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         let overlay = document.createElement("div");
-        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;";
+        overlay.style.cssText =
+          "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; display:flex; align-items:center; justify-content:center;";
         let dialog = document.createElement("div");
-        dialog.style.cssText = "background:white; padding:20px; border-radius:4px; width:250px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-left: 5px solid #c62828;";
+        dialog.style.cssText =
+          "background:white; padding:20px; border-radius:4px; width:250px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-left: 5px solid #c62828;";
         dialog.innerHTML = `<div style="font-weight:bold; color:#c62828; margin-bottom:10px;">Delete Version #${v.displayNumber}?</div><div style="font-size:12px; color:#555; margin-bottom:15px;">Permanent action.</div><div style="display:flex; gap:10px;"><button id="btnConfDel" style="flex:1; background:#c62828; color:white; border:none; padding:8px; font-weight:bold; cursor:pointer;">Delete</button><button id="btnCancelDel" style="flex:1; background:#eee; border:none; padding:8px; cursor:pointer;">Cancel</button></div>`;
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
-        document.getElementById("btnCancelDel").onclick = function () { overlay.remove(); };
+        document.getElementById("btnCancelDel").onclick = function () {
+          overlay.remove();
+        };
         document.getElementById("btnConfDel").onclick = async function () {
           overlay.remove();
-          let newHist = versions.filter(x => x.timestamp !== v.timestamp);
-          newHist.forEach(h => delete h.displayNumber);
+          let newHist = versions.filter((x) => x.timestamp !== v.timestamp);
+          newHist.forEach((h) => delete h.displayNumber);
           await saveHistoryToDoc(newHist);
           renderVersionTimeline(container);
           showToast("🗑️ Version Deleted");
@@ -16586,7 +17224,9 @@ function renderVersionTimeline(container) {
       btnComp.className = "btn-platinum-config primary";
       btnComp.style.cssText = "flex:1; font-size:9px; font-weight:800; padding:6px;";
       btnComp.innerText = "↔ COMPARE";
-      btnComp.onclick = function () { runVersionCompare(v); };
+      btnComp.onclick = function () {
+        runVersionCompare(v);
+      };
 
       actionRow.appendChild(btnView);
       actionRow.appendChild(btnComp);
@@ -16610,8 +17250,7 @@ function runVersionCompare(historicalVersion) {
     await context.sync();
     return html.value;
   })
-    .then(currentHtml => {
-
+    .then((currentHtml) => {
       // 2. Process both through the SAME cleaner
       // This normalizes newlines and structure for both sides
       let currentText = getCleanTextAndContext(currentHtml).text;
@@ -16652,7 +17291,7 @@ function runVersionCompare(historicalVersion) {
       }
     `;
 
-      return callGemini(API_KEY, prompt).then(result => {
+      return callGemini(API_KEY, prompt).then((result) => {
         let analysis = tryParseGeminiJSON(result);
         renderVersionReport(analysis, historicalVersion.label, oldText, currentText);
       });
@@ -16694,13 +17333,17 @@ function renderVersionReport(data, verLabel, oldText, currentText) {
             <th style="padding:8px; color:#546e7a;">Change</th>
             <th style="padding:8px; color:#546e7a;">Impact</th>
          </tr>
-         ${data.changes.map(c => `
+         ${data.changes
+           .map(
+             (c) => `
             <tr style="border-bottom:1px solid #eee;">
                <td style="padding:8px; font-weight:bold; color:#37474f;">${c.clause}</td>
                <td style="padding:8px; color:#455a64;">${c.change}</td>
-               <td style="padding:8px; font-weight:700; color:${(c.impact || '').toLowerCase().includes('risk') ? '#c62828' : '#2e7d32'}">${c.impact}</td>
+               <td style="padding:8px; font-weight:700; color:${(c.impact || "").toLowerCase().includes("risk") ? "#c62828" : "#2e7d32"}">${c.impact}</td>
             </tr>
-         `).join('')}
+         `,
+           )
+           .join("")}
        </table>
   `;
   out.appendChild(card);
@@ -16719,12 +17362,12 @@ function renderVersionReport(data, verLabel, oldText, currentText) {
     setLoading(true, "default");
 
     // Call the main compare engine
-    // Note: We skip 'validateApiAndGetText' inside runCompareAnalysis by modifying it, 
+    // Note: We skip 'validateApiAndGetText' inside runCompareAnalysis by modifying it,
     // OR we just call the API directly here to be safer.
 
     // Let's call the API directly to ensure we use the exact text we have here
     callGemini(API_KEY, PROMPTS.COMPARE(oldText, currentText, "old"))
-      .then(result => {
+      .then((result) => {
         try {
           let deepData = tryParseGeminiJSON(result);
           renderCompareResults(deepData, "old");
@@ -16741,7 +17384,8 @@ function renderVersionReport(data, verLabel, oldText, currentText) {
   let btnTrack = document.createElement("button");
   btnTrack.className = "btn-platinum-config";
   // Styled slightly differently (Red/Pink accent) to distinguish from Deep Analysis
-  btnTrack.style.cssText = "width:100%; margin-bottom:10px; padding:12px; font-size:12px; color:#b71c1c; border-color:#ffcdd2;";
+  btnTrack.style.cssText =
+    "width:100%; margin-bottom:10px; padding:12px; font-size:12px; color:#b71c1c; border-color:#ffcdd2;";
   btnTrack.innerHTML = "📝 ANALYZE TRACK CHANGES";
 
   btnTrack.onclick = function () {
@@ -16755,14 +17399,19 @@ function renderVersionReport(data, verLabel, oldText, currentText) {
   btnBack.className = "btn-action";
   btnBack.innerText = "⬅ Back to Timeline";
   btnBack.style.width = "100%";
-  btnBack.onclick = function () { showCompareInterface(); };
+  btnBack.onclick = function () {
+    showCompareInterface();
+  };
   out.appendChild(btnBack);
 }
 // Helper to strip tags for AI processing
 function cleanOoxmlForAI(ooxml) {
-  // Simple regex to remove XML tags. 
+  // Simple regex to remove XML tags.
   // For production, a DOMParser is better, but this works for basic text extraction.
-  return ooxml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return ooxml
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 // ==========================================
 // HELPER: Get/Create Unique Document ID
@@ -16795,47 +17444,47 @@ function createSnapshot(label, container, callback, forceNew) {
     let html = body.getHtml();
     await ctx.sync();
     return html.value;
-  }).then(async (htmlContent) => {
+  })
+    .then(async (htmlContent) => {
+      // 1. Get existing history
+      let history = await getHistoryFromDoc();
 
-    // 1. Get existing history
-    let history = await getHistoryFromDoc();
+      // 2. Check if we already have a save for THIS session
+      let existingSessionIndex = history.findIndex((v) => v.sessionId === CURRENT_SESSION_ID);
 
-    // 2. Check if we already have a save for THIS session
-    let existingSessionIndex = history.findIndex(v => v.sessionId === CURRENT_SESSION_ID);
+      let newEntry = {
+        sessionId: CURRENT_SESSION_ID,
+        timestamp: Date.now(),
+        label: label || "Current Session",
+        author: "Me",
+        html: htmlContent,
+      };
 
-    let newEntry = {
-      sessionId: CURRENT_SESSION_ID,
-      timestamp: Date.now(),
-      label: label || "Current Session",
-      author: "Me",
-      html: htmlContent
-    };
+      // LOGIC CHANGE: Only overwrite if it exists AND we are not forcing a new entry
+      if (existingSessionIndex !== -1 && !forceNew) {
+        // SCENARIO A: Standard Save -> Update the existing "Session" entry
+        history[existingSessionIndex] = newEntry;
+      } else {
+        // SCENARIO B: New Session OR Forced Snapshot (e.g. Email/Save As)
+        // This preserves the old one and appends this as a distinct milestone
+        history.push(newEntry);
+      }
 
-    // LOGIC CHANGE: Only overwrite if it exists AND we are not forcing a new entry
-    if (existingSessionIndex !== -1 && !forceNew) {
-      // SCENARIO A: Standard Save -> Update the existing "Session" entry
-      history[existingSessionIndex] = newEntry;
-    } else {
-      // SCENARIO B: New Session OR Forced Snapshot (e.g. Email/Save As)
-      // This preserves the old one and appends this as a distinct milestone
-      history.push(newEntry);
-    }
+      // 3. CAP THE HISTORY
+      history.sort((a, b) => a.timestamp - b.timestamp);
+      if (history.length > 5) {
+        history = history.slice(history.length - 5);
+      }
 
-    // 3. CAP THE HISTORY
-    history.sort((a, b) => a.timestamp - b.timestamp);
-    if (history.length > 5) {
-      history = history.slice(history.length - 5);
-    }
+      // 4. Save back to document
+      await saveHistoryToDoc(history);
 
-    // 4. Save back to document
-    await saveHistoryToDoc(history);
-
-    if (callback) callback();
-
-  }).catch(e => {
-    console.error("Snapshot failed:", e);
-    if (container) container.innerHTML = "❌ Save Failed";
-  });
+      if (callback) callback();
+    })
+    .catch((e) => {
+      console.error("Snapshot failed:", e);
+      if (container) container.innerHTML = "❌ Save Failed";
+    });
 }
 // ==========================================
 // REPLACE: runAutoBaseline (Respects Setting)
@@ -16851,9 +17500,8 @@ function runAutoBaseline() {
 
   getUniqueDocumentId().then(function (docId) {
     PROMPTS.getVersionHistory(docId).then(function (versions) {
-
       // 1. Generate Label with CURRENT Time
-      let timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let timeLabel = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       let finalLabel = "Auto-Save (" + timeLabel + ")";
 
       // 2. If Brand New (No history), create Baseline
@@ -16870,26 +17518,27 @@ function runAutoBaseline() {
         let html = body.getHtml();
         await ctx.sync();
         return html.value;
-      }).then(currentContent => {
+      })
+        .then((currentContent) => {
+          // Find if we already have a save for TODAY (Current Session)
+          let todayVersion = versions.find((v) => v.sessionId === CURRENT_SESSION_ID);
 
-        // Find if we already have a save for TODAY (Current Session)
-        let todayVersion = versions.find(v => v.sessionId === CURRENT_SESSION_ID);
-
-        // If found, update it (Overwrite)
-        if (todayVersion) {
-          if (currentContent.length !== todayVersion.html.length) {
-            console.log("ℹ️ Content changed. Updating snapshot...");
+          // If found, update it (Overwrite)
+          if (todayVersion) {
+            if (currentContent.length !== todayVersion.html.length) {
+              console.log("ℹ️ Content changed. Updating snapshot...");
+              createSnapshot(docId, finalLabel, null, function () {
+                showToast("✅ Snapshot Updated");
+              });
+            }
+          } else {
+            // New Session -> New Entry
             createSnapshot(docId, finalLabel, null, function () {
-              showToast("✅ Snapshot Updated");
+              showToast("✅ Session Snapshot Saved");
             });
           }
-        } else {
-          // New Session -> New Entry
-          createSnapshot(docId, finalLabel, null, function () {
-            showToast("✅ Session Snapshot Saved");
-          });
-        }
-      }).catch(e => console.warn("Auto-save check failed", e));
+        })
+        .catch((e) => console.warn("Auto-save check failed", e));
     });
   });
 }
@@ -16902,7 +17551,7 @@ function getHistoryFromDoc() {
       const raw = Office.context.document.settings.get("eli_version_history");
       if (raw) {
         // Determine if it's stringified JSON or an object
-        const data = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
         resolve(Array.isArray(data) ? data : []);
       } else {
         resolve([]);
@@ -16917,7 +17566,7 @@ function getHistoryFromDoc() {
 function saveHistoryToDoc(historyArray) {
   return new Promise((resolve, reject) => {
     try {
-      // 1. LIMIT SIZE: Settings has a 2MB limit. 
+      // 1. LIMIT SIZE: Settings has a 2MB limit.
       // We keep only the last 3 snapshots to be safe.
       if (historyArray.length > 3) {
         historyArray = historyArray.slice(historyArray.length - 3);
@@ -16925,7 +17574,7 @@ function saveHistoryToDoc(historyArray) {
 
       // 2. OPTIMIZE: Strip huge Base64 images to save space
       // (We preserve text formatting, but drop heavy images)
-      const optimizedHistory = historyArray.map(h => {
+      const optimizedHistory = historyArray.map((h) => {
         if (h.html && h.html.length > 50000) {
           // Simple stripper for img tags with base64 data
           h.html = h.html.replace(/<img[^>]*src=["']data:image\/[^;]+;base64,[^"']+["'][^>]*>/gi, "[Image Removed]");
@@ -16934,7 +17583,7 @@ function saveHistoryToDoc(historyArray) {
       });
 
       // 3. SAVE
-      // Note: We don't need JSON.stringify if saving to Settings directly in some Office versions, 
+      // Note: We don't need JSON.stringify if saving to Settings directly in some Office versions,
       // but stringifying ensures consistency across platforms.
       Office.context.document.settings.set("eli_version_history", JSON.stringify(optimizedHistory));
 
@@ -16951,7 +17600,6 @@ function saveHistoryToDoc(historyArray) {
           resolve();
         }
       });
-
     } catch (e) {
       //console.error("Save Logic Error:", e);
       showToast("⚠️ Error Saving History");
@@ -17049,7 +17697,7 @@ function showPreviewModal(title, contentHtml) {
 
   header.onmousedown = function (e) {
     // Ignore clicks on close button
-    if (e.target.id === 'btnCloseFloat') return;
+    if (e.target.id === "btnCloseFloat") return;
 
     isDragging = true;
     startX = e.clientX;
@@ -17059,23 +17707,23 @@ function showPreviewModal(title, contentHtml) {
 
     // TRICK: Create a transparent overlay to cover the iframe.
     // Otherwise, if mouse moves fast over the iframe, the iframe captures the event and drag stops.
-    let blocker = document.createElement('div');
-    blocker.id = 'dragBlocker';
-    blocker.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; z-index:10000; cursor:move;';
+    let blocker = document.createElement("div");
+    blocker.id = "dragBlocker";
+    blocker.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; z-index:10000; cursor:move;";
     modal.appendChild(blocker);
 
     document.onmousemove = function (e) {
       if (!isDragging) return;
       e.preventDefault();
-      modal.style.left = (initialLeft + e.clientX - startX) + "px";
-      modal.style.top = (initialTop + e.clientY - startY) + "px";
+      modal.style.left = initialLeft + e.clientX - startX + "px";
+      modal.style.top = initialTop + e.clientY - startY + "px";
     };
 
     document.onmouseup = function () {
       isDragging = false;
       document.onmousemove = null;
       document.onmouseup = null;
-      let b = document.getElementById('dragBlocker');
+      let b = document.getElementById("dragBlocker");
       if (b) b.remove();
     };
   };
@@ -17093,8 +17741,8 @@ function injectHistoryButton() {
   btnSnap.onclick = function (e) {
     e.stopPropagation();
     e.preventDefault();
-    if (typeof setActiveButton === 'function') setActiveButton("");
-    if (typeof tryCollapseToolbar === 'function') tryCollapseToolbar();
+    if (typeof setActiveButton === "function") setActiveButton("");
+    if (typeof tryCollapseToolbar === "function") tryCollapseToolbar();
     showVersionHistoryInterface();
   };
 }
@@ -17122,7 +17770,8 @@ function showVersionHistoryInterface(viewOnly) {
 
   // 2. EXPLANATION BAR
   var infoBar = document.createElement("div");
-  infoBar.style.cssText = "background:#e3f2fd; border:1px solid #90caf9; border-left:4px solid #1565c0; padding:10px 12px; margin-bottom:15px;";
+  infoBar.style.cssText =
+    "background:#e3f2fd; border:1px solid #90caf9; border-left:4px solid #1565c0; padding:10px 12px; margin-bottom:15px;";
   infoBar.innerHTML = `<div style="font-size:10px; color:#1565c0; line-height:1.4;">
       <strong>Version History:</strong> You can enable auto-save in the settings that will save each version when ELI loads.
   </div>`;
@@ -17145,15 +17794,16 @@ function showVersionHistoryInterface(viewOnly) {
 
   // --- LOGIC ---
   getUniqueDocumentId().then(function (docId) {
-
     // --- HELPER: SHOW LABEL MODAL ---
     function askForLabel() {
       var overlay = document.createElement("div");
-      overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+      overlay.style.cssText =
+        "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
       var dialog = document.createElement("div");
       dialog.className = "tool-box slide-in";
-      dialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #1565c0; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+      dialog.style.cssText =
+        "background:white; width:280px; padding:20px; border-left:5px solid #1565c0; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
       dialog.innerHTML = `
             <div style="font-size:24px; margin-bottom:10px;">🏷️</div>
@@ -17195,9 +17845,15 @@ function showVersionHistoryInterface(viewOnly) {
         renderVersionTimeline(timelineContainer, docId);
       };
 
-      document.getElementById("btnSourceCP").onclick = function () { handleSelection("CP Version"); };
-      document.getElementById("btnSourceTP").onclick = function () { handleSelection("Third Party"); };
-      document.getElementById("btnSourceSkip").onclick = function () { handleSelection(""); };
+      document.getElementById("btnSourceCP").onclick = function () {
+        handleSelection("CP Version");
+      };
+      document.getElementById("btnSourceTP").onclick = function () {
+        handleSelection("Third Party");
+      };
+      document.getElementById("btnSourceSkip").onclick = function () {
+        handleSelection("");
+      };
 
       // NEW BUTTON BINDING
       document.getElementById("btnNoSnapshot").onclick = handleSkip;
@@ -17215,12 +17871,15 @@ function showVersionHistoryInterface(viewOnly) {
     var mpImport = document.createElement("button");
     mpImport.className = "btn-action";
     mpImport.innerHTML = "📂 Import External File";
-    mpImport.style.cssText = "width:100%; margin-top:15px; margin-bottom:5px; background: linear-gradient(180deg, #ffffff 0%, #cfd8dc 100%); border: 1px solid #b0bec5; border-bottom: 3px solid #78909c; color: #37474f; font-weight: 700; text-shadow: 0 1px 0 #fff; border-radius:0px; padding:8px;";
-    mpImport.onclick = function () { fileInp.click(); };
+    mpImport.style.cssText =
+      "width:100%; margin-top:15px; margin-bottom:5px; background: linear-gradient(180deg, #ffffff 0%, #cfd8dc 100%); border: 1px solid #b0bec5; border-bottom: 3px solid #78909c; color: #37474f; font-weight: 700; text-shadow: 0 1px 0 #fff; border-radius:0px; padding:8px;";
+    mpImport.onclick = function () {
+      fileInp.click();
+    };
 
     // Place: Append to the end, then move Home Button to be after it
     out.appendChild(mpImport);
-    if (typeof btnHome !== 'undefined') out.appendChild(btnHome);
+    if (typeof btnHome !== "undefined") out.appendChild(btnHome);
 
     fileInp.onchange = function (e) {
       let file = e.target.files[0];
@@ -17232,7 +17891,7 @@ function showVersionHistoryInterface(viewOnly) {
           label: "Import: " + file.name,
           author: "External",
           text: text,
-          html: html
+          html: html,
         };
         PROMPTS.saveVersionSnapshot(docId, newVer).then(() => {
           renderVersionTimeline(timelineContainer, docId);
@@ -17266,7 +17925,8 @@ function showAppStore() {
   // 1. Header
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #1565c0; background:#fff;";
+  card.style.cssText =
+    "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #1565c0; background:#fff;";
 
   card.innerHTML = `
         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 12px 15px; border-bottom: 3px solid #c9a227;">
@@ -17285,13 +17945,18 @@ function showAppStore() {
   var container = card.querySelector("#storeContent");
 
   // 2. Filter Data
-  var featuredApps = ELI_APP_STORE_CATALOG.filter(function (a) { return a.category !== "Core System Tools"; });
-  var coreApps = ELI_APP_STORE_CATALOG.filter(function (a) { return a.category === "Core System Tools"; });
+  var featuredApps = ELI_APP_STORE_CATALOG.filter(function (a) {
+    return a.category !== "Core System Tools";
+  });
+  var coreApps = ELI_APP_STORE_CATALOG.filter(function (a) {
+    return a.category === "Core System Tools";
+  });
 
   // 3. Render Helper
   function renderAppRow(app, targetDiv) {
     var item = document.createElement("div");
-    item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #eee; margin-bottom:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05); border-radius:4px;";
+    item.style.cssText =
+      "display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #eee; margin-bottom:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05); border-radius:4px;";
 
     // Check Installation Status safely
     var isInstalled = userSettings.installedStoreApps.indexOf(app.key) !== -1;
@@ -17301,11 +17966,9 @@ function showAppStore() {
 
     if (isCore) {
       btnHtml = `<span style="font-size:10px; font-weight:700; color:#90a4ae; background:#f5f5f5; padding:4px 8px; border-radius:4px;">BUILT-IN</span>`;
-    }
-    else if (isInstalled) {
+    } else if (isInstalled) {
       btnHtml = `<button class="btn-uninstall" style="background:#fff; color:#c62828; border:1px solid #ef9a9a; padding:6px 12px; font-size:10px; font-weight:bold; cursor:pointer; border-radius:0px;">UNINSTALL</button>`;
-    }
-    else {
+    } else {
       btnHtml = `<button class="btn-install" style="background:#1565c0; color:#fff; border:none; padding:6px 12px; font-size:10px; font-weight:bold; cursor:pointer; border-radius:0px; box-shadow:0 2px 4px rgba(21,101,192,0.3);">GET +</button>`;
     }
 
@@ -17333,7 +17996,7 @@ function showAppStore() {
           }
           registerAppRuntime(app);
           saveCurrentSettings();
-          showAppStore();  // Refresh store to show "Uninstall" button
+          showAppStore(); // Refresh store to show "Uninstall" button
           showToast("✅ Installed! Go to 'Customize Toolbar' to add it.");
         };
       }
@@ -17357,11 +18020,14 @@ function showAppStore() {
   var featDiv = document.createElement("div");
   featDiv.innerHTML = `<div style="font-size:10px; font-weight:800; color:#1565c0; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px;">✨ Featured Extensions</div>`;
   container.appendChild(featDiv);
-  featuredApps.forEach(function (app) { renderAppRow(app, featDiv); });
+  featuredApps.forEach(function (app) {
+    renderAppRow(app, featDiv);
+  });
 
   // Collapsible Core Tools
   var coreHeader = document.createElement("div");
-  coreHeader.style.cssText = "margin-top:20px; margin-bottom:10px; padding:10px; background:#e3f2fd; border:1px solid #bbdefb; color:#1565c0; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; border-radius:4px;";
+  coreHeader.style.cssText =
+    "margin-top:20px; margin-bottom:10px; padding:10px; background:#e3f2fd; border:1px solid #bbdefb; color:#1565c0; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:space-between; border-radius:4px;";
   coreHeader.innerHTML = `<span>🛠️ Core System Tools (${coreApps.length})</span> <span id="coreArrow">▼</span>`;
 
   var coreList = document.createElement("div");
@@ -17376,7 +18042,9 @@ function showAppStore() {
 
   container.appendChild(coreHeader);
   container.appendChild(coreList);
-  coreApps.forEach(function (app) { renderAppRow(app, coreList); });
+  coreApps.forEach(function (app) {
+    renderAppRow(app, coreList);
+  });
 }
 // ==========================================
 // END: ELI APP STORE UI
@@ -17391,7 +18059,8 @@ function showDocuScrubUI() {
   // 1. HEADER
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #00acc1; background:#fff;";
+  card.style.cssText =
+    "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #00acc1; background:#fff;";
 
   card.innerHTML = `
         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 12px 15px; border-bottom: 3px solid #c9a227;">
@@ -17477,7 +18146,7 @@ function executeDocuScrub() {
     fontColor: document.getElementById("scrubFontColor").value,
     removeEmpty: document.getElementById("chkRemoveEmpty").checked,
     fixSpaces: document.getElementById("chkFixDoubleSpace").checked,
-    stripMeta: document.getElementById("chkStripMeta").checked
+    stripMeta: document.getElementById("chkStripMeta").checked,
   };
 
   var btn = document.getElementById("btnRunScrub");
@@ -17531,7 +18200,7 @@ function executeDocuScrub() {
           try {
             p.delete();
             deletedCount++;
-          } catch (e) { }
+          } catch (e) {}
         }
       }
     }
@@ -17568,7 +18237,6 @@ function executeDocuScrub() {
       btn.style.background = "#00acc1";
       btn.disabled = false;
     }, 3000);
-
   }).catch(function (error) {
     console.error("Scrub Error: " + error);
     btn.innerHTML = "⚠️ Error";
@@ -17587,7 +18255,8 @@ function runTermMatrix() {
   // 1. HEADER
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #673ab7; background:#fff;";
+  card.style.cssText =
+    "padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #673ab7; background:#fff;";
 
   card.innerHTML = `
         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 12px 15px; border-bottom: 3px solid #c9a227;">
@@ -17636,7 +18305,7 @@ function runTermMatrix() {
         if (!definedSet.has(raw)) {
           definitions.push({
             term: raw,
-            range: item // Keep reference for navigation
+            range: item, // Keep reference for navigation
           });
           definedSet.add(raw);
         }
@@ -17652,11 +18321,17 @@ function runTermMatrix() {
     var capMatches = fullText.match(/(?<!^|\. )(?<!")\b[A-Z][a-z]+(?: [A-Z][a-z]+)*\b(?!")/g) || [];
 
     var counts = {};
-    capMatches.forEach(m => { counts[m] = (counts[m] || 0) + 1; });
+    capMatches.forEach((m) => {
+      counts[m] = (counts[m] || 0) + 1;
+    });
 
     for (var key in counts) {
       // If it appears often, looks like a term, but isn't in our defined set
-      if (counts[key] > 2 && !definedSet.has(key) && !["Colgate", "Company", "Party", "Parties", "Agreement"].includes(key)) {
+      if (
+        counts[key] > 2 &&
+        !definedSet.has(key) &&
+        !["Colgate", "Company", "Party", "Parties", "Agreement"].includes(key)
+      ) {
         ghosts.push({ term: key, count: counts[key] });
       }
     }
@@ -17673,9 +18348,10 @@ function runTermMatrix() {
       var ghostList = document.createElement("div");
       ghostList.style.cssText = "display:flex; flex-wrap:wrap; gap:5px;";
 
-      ghosts.slice(0, 5).forEach(g => {
+      ghosts.slice(0, 5).forEach((g) => {
         var chip = document.createElement("span");
-        chip.style.cssText = "font-size:10px; background:#fff; border:1px solid #ffcc80; padding:2px 6px; border-radius:4px; color:#e65100;";
+        chip.style.cssText =
+          "font-size:10px; background:#fff; border:1px solid #ffcc80; padding:2px 6px; border-radius:4px; color:#e65100;";
         chip.innerText = `${g.term} (${g.count})`;
         ghostList.appendChild(chip);
       });
@@ -17694,15 +18370,20 @@ function runTermMatrix() {
       definitions.forEach((def, i) => {
         var row = document.createElement("div");
         row.className = "term-row"; // Hover effect handled by CSS or inline
-        row.style.cssText = "padding:10px 15px; border-bottom:1px solid #f0f0f0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;";
-        row.onmouseover = function () { this.style.background = "#f5f5f5"; };
-        row.onmouseout = function () { this.style.background = "white"; };
+        row.style.cssText =
+          "padding:10px 15px; border-bottom:1px solid #f0f0f0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;";
+        row.onmouseover = function () {
+          this.style.background = "#f5f5f5";
+        };
+        row.onmouseout = function () {
+          this.style.background = "white";
+        };
 
         row.innerHTML = `<span style="font-weight:600; font-size:12px; color:#333;">${def.term}</span> <span style="font-size:10px; color:#673ab7;">Go ➜</span>`;
 
         // CLICK TO NAVIGATE
         row.onclick = function () {
-          // We must re-find the range in a new context for stability, 
+          // We must re-find the range in a new context for stability,
           // or use the original if session is active.
           // For simplicity in this structure, we trigger a fresh search for the term.
           locateText('"' + def.term + '"', this, true);
@@ -17712,7 +18393,6 @@ function runTermMatrix() {
       });
       listContainer.appendChild(ul);
     }
-
   }).catch(function (error) {
     console.error("Matrix Error: " + error);
     listContainer.innerHTML = `<div style="color:red; padding:15px;">Error: ${error.message}</div>`;
@@ -17720,7 +18400,7 @@ function runTermMatrix() {
 }
 // HELPER: Add app to definitions so it appears in "Customize Toolbar"
 function registerAppRuntime(app) {
-  if (TOOL_DEFINITIONS.find(t => t.key === app.key)) return; // Prevent duplicates
+  if (TOOL_DEFINITIONS.find((t) => t.key === app.key)) return; // Prevent duplicates
 
   TOOL_DEFINITIONS.push({
     id: app.id,
@@ -17732,18 +18412,18 @@ function registerAppRuntime(app) {
       setActiveButton(app.id);
       tryCollapseToolbar();
       app.action();
-    }
+    },
   });
 }
 
 // HELPER: Remove app from definitions and toolbars
 function unregisterAppRuntime(appKey) {
   // 1. Remove from Definitions
-  TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t => t.key !== appKey);
+  TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter((t) => t.key !== appKey);
 
   // 2. Remove from Active Workflows
   if (userSettings.workflowMaps) {
-    Object.keys(userSettings.workflowMaps).forEach(mode => {
+    Object.keys(userSettings.workflowMaps).forEach((mode) => {
       var playlist = userSettings.workflowMaps[mode];
       var idx = playlist.indexOf(appKey);
       if (idx !== -1) playlist.splice(idx, 1);
@@ -17771,9 +18451,9 @@ function runTimelineAnalysis() {
   out.appendChild(loader);
 
   // 3. Scan & Analyze
-  validateApiAndGetText(false, null).then(function (text) {
-
-    var prompt = `
+  validateApiAndGetText(false, null)
+    .then(function (text) {
+      var prompt = `
       Analyze this contract and extract all critical dates and durations.
       RETURN RAW JSON ARRAY: 
       [
@@ -17783,7 +18463,7 @@ function runTimelineAnalysis() {
       ]
       
       RULES:
-      1. Calculate exact dates if possible (assume today is ${new Date().toISOString().split('T')[0]}).
+      1. Calculate exact dates if possible (assume today is ${new Date().toISOString().split("T")[0]}).
       2. If a date is relative (e.g. "3 years from Effective Date"), calculate it.
       3. Mark "critical" as true for non-renewal notices or termination deadlines.
       
@@ -17791,25 +18471,28 @@ function runTimelineAnalysis() {
       ${text.substring(0, 50000)}
     `;
 
-    return callGemini(API_KEY, prompt);
-  }).then(function (result) {
-    loader.remove();
-    try {
-      var data = tryParseGeminiJSON(result);
-      if (!Array.isArray(data)) throw new Error("Invalid Data");
+      return callGemini(API_KEY, prompt);
+    })
+    .then(function (result) {
+      loader.remove();
+      try {
+        var data = tryParseGeminiJSON(result);
+        if (!Array.isArray(data)) throw new Error("Invalid Data");
 
-      // Sort by date
-      data.sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+        // Sort by date
+        data.sort(function (a, b) {
+          return new Date(a.date) - new Date(b.date);
+        });
 
-      // Render Timeline
-      var timelineHTML = `<div style="position:relative; padding-left:20px; border-left:2px solid #e0e0e0; margin-left:10px;">`;
+        // Render Timeline
+        var timelineHTML = `<div style="position:relative; padding-left:20px; border-left:2px solid #e0e0e0; margin-left:10px;">`;
 
-      data.forEach(function (item) {
-        var isCrit = item.critical;
-        var color = isCrit ? "#c62828" : "#1565c0";
-        var bg = isCrit ? "#ffebee" : "#e3f2fd";
+        data.forEach(function (item) {
+          var isCrit = item.critical;
+          var color = isCrit ? "#c62828" : "#1565c0";
+          var bg = isCrit ? "#ffebee" : "#e3f2fd";
 
-        timelineHTML += `
+          timelineHTML += `
           <div class="slide-in" style="margin-bottom:20px; position:relative;">
             <div style="position:absolute; left:-26px; top:0; width:10px; height:10px; background:${color}; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px ${color};"></div>
             
@@ -17820,25 +18503,25 @@ function runTimelineAnalysis() {
             </div>
           </div>
         `;
-      });
-      timelineHTML += `</div>`;
+        });
+        timelineHTML += `</div>`;
 
-      // Export Button
-      timelineHTML += `
+        // Export Button
+        timelineHTML += `
         <button class="btn-action" style="width:100%; margin-top:10px;" onclick="showToast('📅 Added to Outlook (Simulated)')">
             🗓️ Add to Outlook
         </button>
       `;
 
-      var content = document.createElement("div");
-      content.style.padding = "0 15px 15px 15px";
-      content.innerHTML = timelineHTML;
-      out.appendChild(content);
-
-    } catch (e) {
-      out.innerHTML += `<div style="color:red; padding:15px;">Could not extract dates.</div>`;
-    }
-  }).catch(handleError);
+        var content = document.createElement("div");
+        content.style.padding = "0 15px 15px 15px";
+        content.innerHTML = timelineHTML;
+        out.appendChild(content);
+      } catch (e) {
+        out.innerHTML += `<div style="color:red; padding:15px;">Could not extract dates.</div>`;
+      }
+    })
+    .catch(handleError);
 }
 // HELPER: Get Unique ID for the current Word Document
 function getDocumentGuid() {
@@ -17963,7 +18646,8 @@ function showBracketCleaner(items) {
 
   // 2. INTRO
   var intro = document.createElement("div");
-  intro.style.cssText = "padding:15px; background:#fff3e0; border-left:4px solid #f57f17; margin-bottom:15px; font-size:12px; color:#5d4037; line-height:1.5;";
+  intro.style.cssText =
+    "padding:15px; background:#fff3e0; border-left:4px solid #f57f17; margin-bottom:15px; font-size:12px; color:#5d4037; line-height:1.5;";
   intro.innerHTML = `<strong>${items.length} placeholder(s) detected.</strong><br>These brackets appear to be unfilled. Use the locate button and suggestions below to resolve them before saving.`;
   out.appendChild(intro);
 
@@ -17974,13 +18658,14 @@ function showBracketCleaner(items) {
   items.forEach((item, idx) => {
     var row = document.createElement("div");
     row.className = "slide-in";
-    row.style.cssText = "display:flex; align-items:center; justify-content:space-between; background:white; border:1px solid #e0e0e0; border-left:3px solid #b0bec5; padding:10px; margin-bottom:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);";
+    row.style.cssText =
+      "display:flex; align-items:center; justify-content:space-between; background:white; border:1px solid #e0e0e0; border-left:3px solid #b0bec5; padding:10px; margin-bottom:8px; box-shadow:0 2px 4px rgba(0,0,0,0.05);";
 
     // Clean Label: "[[Expenses]]" -> "Expenses"
     var cleanLabel = item.text.replace(/[\[\]]/g, "").trim();
 
     // DYNAMIC MATCHING: Check if cleanLabel includes any key from CLEANER_RULES
-    var matchedKey = Object.keys(CLEANER_RULES).find(key => cleanLabel.includes(key));
+    var matchedKey = Object.keys(CLEANER_RULES).find((key) => cleanLabel.includes(key));
     var rule = matchedKey ? CLEANER_RULES[matchedKey] : null;
 
     // Left Side
@@ -17997,7 +18682,9 @@ function showBracketCleaner(items) {
     btnLoc.className = "btn-platinum-config";
     btnLoc.innerText = "📍 Locate";
     btnLoc.style.fontSize = "10px";
-    btnLoc.onclick = function () { locateText(item.text, btnLoc, true); };
+    btnLoc.onclick = function () {
+      locateText(item.text, btnLoc, true);
+    };
     right.appendChild(btnLoc);
 
     // B. HELP BUTTON (Dynamic)
@@ -18053,11 +18740,13 @@ function showBracketCleaner(items) {
 // ==========================================
 function showGenericCleanerHelper(rule, targetTextString) {
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "background:white; width:320px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #2e7d32; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
+  card.style.cssText =
+    "background:white; width:320px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #2e7d32; box-shadow:0 20px 50px rgba(0,0,0,0.3);";
 
   card.innerHTML = `
     <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding: 15px; border-bottom: 3px solid #2e7d32;">
@@ -18077,18 +18766,25 @@ function showGenericCleanerHelper(rule, targetTextString) {
   var container = card.querySelector("#cleanerOptionsContainer");
 
   // 1. Render Dynamic Options
-  rule.options.forEach(opt => {
+  rule.options.forEach((opt) => {
     var div = document.createElement("div");
     div.className = "helper-option";
-    div.style.cssText = "cursor:pointer; padding:10px; border:1px solid #e0e0e0; margin-bottom:8px; border-radius:4px; transition:background 0.2s;";
+    div.style.cssText =
+      "cursor:pointer; padding:10px; border:1px solid #e0e0e0; margin-bottom:8px; border-radius:4px; transition:background 0.2s;";
 
     div.innerHTML = `
         <div style="font-weight:700; font-size:11px; color:#1565c0; margin-bottom:4px;">${opt.label}</div>
         <div style="font-size:10px; color:#333;">${opt.desc}</div>
       `;
 
-    div.onmouseover = function () { this.style.backgroundColor = "#f5f9ff"; this.style.borderColor = "#1565c0"; };
-    div.onmouseout = function () { this.style.backgroundColor = "transparent"; this.style.borderColor = "#e0e0e0"; };
+    div.onmouseover = function () {
+      this.style.backgroundColor = "#f5f9ff";
+      this.style.borderColor = "#1565c0";
+    };
+    div.onmouseout = function () {
+      this.style.backgroundColor = "transparent";
+      this.style.borderColor = "#e0e0e0";
+    };
 
     div.onclick = function () {
       // --- PASS 'TRUE' HERE ---
@@ -18105,18 +18801,29 @@ function showGenericCleanerHelper(rule, targetTextString) {
 
   // 2. Add "Fix Manually"
   var manualDiv = document.createElement("div");
-  manualDiv.style.cssText = "cursor:pointer; padding:10px; border:1px dashed #b0bec5; margin-bottom:8px; border-radius:4px; transition:background 0.2s; background:#fcfcfc;";
+  manualDiv.style.cssText =
+    "cursor:pointer; padding:10px; border:1px dashed #b0bec5; margin-bottom:8px; border-radius:4px; transition:background 0.2s; background:#fcfcfc;";
   manualDiv.innerHTML = `
     <div style="font-weight:700; font-size:11px; color:#546e7a; margin-bottom:4px;">🛠️ Fix Manually</div>
     <div style="font-size:10px; color:#666;">I will edit the text myself.</div>
   `;
-  manualDiv.onmouseover = function () { this.style.backgroundColor = "#eceff1"; this.style.borderColor = "#78909c"; };
-  manualDiv.onmouseout = function () { this.style.backgroundColor = "#fcfcfc"; this.style.borderColor = "#b0bec5"; };
+  manualDiv.onmouseover = function () {
+    this.style.backgroundColor = "#eceff1";
+    this.style.borderColor = "#78909c";
+  };
+  manualDiv.onmouseout = function () {
+    this.style.backgroundColor = "#fcfcfc";
+    this.style.borderColor = "#b0bec5";
+  };
 
-  manualDiv.onclick = function () { overlay.remove(); };
+  manualDiv.onclick = function () {
+    overlay.remove();
+  };
   container.appendChild(manualDiv);
 
-  document.getElementById("btnCancelHelper").onclick = function () { overlay.remove(); };
+  document.getElementById("btnCancelHelper").onclick = function () {
+    overlay.remove();
+  };
 }
 // ==========================================
 // REPLACE: loadClauseLibrary (Auto-Fixes Missing IDs)
@@ -18139,7 +18846,7 @@ async function loadClauseLibrary() {
         await saveLibraryToDB(eliClauseLibrary);
         console.log("🚀 MIGRATION COMPLETE: Moved to IndexedDB.");
         // Optional: Clear LocalStorage to free up space
-        // localStorage.removeItem("colgate_library"); 
+        // localStorage.removeItem("colgate_library");
       } else {
         eliClauseLibrary = [];
       }
@@ -18156,7 +18863,6 @@ function saveClauseLibrary() {
   });
 
   // SAFETY: Keep saving to localStorage for one more day, then delete this line
-
 }
 function createLibraryHeader() {
   var header = document.createElement("div");
@@ -18191,7 +18897,7 @@ function createLibraryHeader() {
   // CRITICAL: Bindings
   setTimeout(() => {
     document.getElementById("btnLibReset").onclick = showClauseLibraryInterface;
-    document.getElementById("btnLibClear").onclick = () => promptDelete('all');
+    document.getElementById("btnLibClear").onclick = () => promptDelete("all");
     document.getElementById("btnLibExport").onclick = handleExportJSON;
     document.getElementById("btnLibImport").onclick = () => document.getElementById("libBackupInput").click();
     document.getElementById("btnAiScan").onclick = showAIImportOptions;
@@ -18201,8 +18907,11 @@ function createLibraryHeader() {
     document.getElementById("btnLibSettings").onclick = showMatchSettings;
 
     document.getElementById("btnAddSelection").onclick = function () {
-      validateApiAndGetText(true).then(text => {
-        if (!text || text.length < 2) { showToast("⚠️ Select text first."); return; }
+      validateApiAndGetText(true).then((text) => {
+        if (!text || text.length < 2) {
+          showToast("⚠️ Select text first.");
+          return;
+        }
         showClauseEditor(null, text);
       });
     };
@@ -18290,18 +18999,30 @@ function createFilterControls() {
     document.getElementById("libraryScopeMode").value = mode;
 
     var btns = document.querySelectorAll(".toggle-btn");
-    btns.forEach(b => {
+    btns.forEach((b) => {
       if (b.dataset.mode === mode) {
         // --- ACTIVE STATE ---
         b.classList.add("active");
-        if (mode === 'standard') { b.style.background = '#2e7d32'; b.style.borderColor = '#2e7d32'; b.style.color = 'white'; }
-        else if (mode === 'thirdparty') { b.style.background = '#ef6c00'; b.style.borderColor = '#ef6c00'; b.style.color = 'white'; }
-        else if (mode === 'public') { b.style.background = '#00acc1'; b.style.borderColor = '#00acc1'; b.style.color = 'white'; }
-        else { b.style.background = '#1565c0'; b.style.borderColor = '#1565c0'; b.style.color = 'white'; }
+        if (mode === "standard") {
+          b.style.background = "#2e7d32";
+          b.style.borderColor = "#2e7d32";
+          b.style.color = "white";
+        } else if (mode === "thirdparty") {
+          b.style.background = "#ef6c00";
+          b.style.borderColor = "#ef6c00";
+          b.style.color = "white";
+        } else if (mode === "public") {
+          b.style.background = "#00acc1";
+          b.style.borderColor = "#00acc1";
+          b.style.color = "white";
+        } else {
+          b.style.background = "#1565c0";
+          b.style.borderColor = "#1565c0";
+          b.style.color = "white";
+        }
 
         // Ensure active border overrides the divider border for consistency
         b.style.borderLeftColor = "";
-
       } else {
         // --- INACTIVE STATE ---
         b.classList.remove("active");
@@ -18318,8 +19039,8 @@ function createFilterControls() {
           b.style.borderLeftColor = "transparent";
         }
 
-        if (b.dataset.mode === 'public') b.style.color = '#00838f';
-        else b.style.color = '#666';
+        if (b.dataset.mode === "public") b.style.color = "#00838f";
+        else b.style.color = "#666";
       }
     });
 
@@ -18339,10 +19060,17 @@ function createFilterControls() {
   setTimeout(() => {
     document.getElementById("btnMatchSelection").onclick = () => runSmartLibrarySearch();
     document.getElementById("btnTriggerSearch").onclick = refreshLibraryList;
-    document.getElementById("libSearchInput").onkeyup = function (e) { if (e.key === "Enter") refreshLibraryList(); else refreshLibraryList(); };
+    document.getElementById("libSearchInput").onkeyup = function (e) {
+      if (e.key === "Enter") refreshLibraryList();
+      else refreshLibraryList();
+    };
     document.getElementById("libSearchField").onchange = refreshLibraryList;
-    document.getElementById("btnExpandAll").onclick = function () { window.toggleAllClauses(true); };
-    document.getElementById("btnCollapseAll").onclick = function () { window.toggleAllClauses(false); };
+    document.getElementById("btnExpandAll").onclick = function () {
+      window.toggleAllClauses(true);
+    };
+    document.getElementById("btnCollapseAll").onclick = function () {
+      window.toggleAllClauses(false);
+    };
 
     var g1 = document.getElementById("groupBy1");
     var g2 = document.getElementById("groupBy2");
@@ -18357,7 +19085,9 @@ function createFilterControls() {
       }
     }
 
-    g1.onchange = handleGroupChange; g2.onchange = handleGroupChange; g3.onchange = handleGroupChange;
+    g1.onchange = handleGroupChange;
+    g2.onchange = handleGroupChange;
+    g3.onchange = handleGroupChange;
     updateDropdownExclusions();
   }, 0);
 
@@ -18381,11 +19111,10 @@ function refreshLibraryList() {
   var g1 = document.getElementById("groupBy1").value;
   var g2 = document.getElementById("groupBy2").value;
   var g3 = document.getElementById("groupBy3").value;
-  var groupLevels = [g1, g2, g3].filter(g => g && g !== "none");
+  var groupLevels = [g1, g2, g3].filter((g) => g && g !== "none");
 
   // 1. FILTER FOR DISPLAY
   var filtered = eliClauseLibrary.filter(function (item) {
-
     // A. Scope Check
     if (scopeMode === "public") {
       if (item.type !== "Public") return false;
@@ -18403,9 +19132,17 @@ function refreshLibraryList() {
 
     if (field === "all") {
       var searchContent = (
-        (item.title || "") + " " + (item.text || "") + " " +
-        (item.category || "") + " " + (item.agreement || "") + " " +
-        (item.entity || "") + " " + (item.jurisdiction || "")
+        (item.title || "") +
+        " " +
+        (item.text || "") +
+        " " +
+        (item.category || "") +
+        " " +
+        (item.agreement || "") +
+        " " +
+        (item.entity || "") +
+        " " +
+        (item.jurisdiction || "")
       ).toLowerCase();
       return searchContent.includes(txt);
     } else {
@@ -18419,7 +19156,7 @@ function refreshLibraryList() {
     container.innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>No clauses found.</div>";
   } else {
     if (groupLevels.length === 0) {
-      filtered.forEach(item => container.appendChild(createClauseCard(item)));
+      filtered.forEach((item) => container.appendChild(createClauseCard(item)));
     } else {
       renderNestedGroups(container, filtered, groupLevels, 0);
     }
@@ -18431,7 +19168,7 @@ function refreshLibraryList() {
 function renderNestedGroups(parentContainer, items, levels, currentDepth) {
   // BASE CASE: If we ran out of levels, render the cards
   if (currentDepth >= levels.length) {
-    items.forEach(item => {
+    items.forEach((item) => {
       parentContainer.appendChild(createClauseCard(item));
     });
     return;
@@ -18441,7 +19178,7 @@ function renderNestedGroups(parentContainer, items, levels, currentDepth) {
   var currentKey = levels[currentDepth];
   var groups = {};
 
-  items.forEach(item => {
+  items.forEach((item) => {
     var val = item[currentKey] || "Uncategorized";
     if (!groups[val]) groups[val] = [];
     groups[val].push(item);
@@ -18451,9 +19188,10 @@ function renderNestedGroups(parentContainer, items, levels, currentDepth) {
   var sortedKeys = Object.keys(groups).sort();
 
   // 3. Render Each Group
-  sortedKeys.forEach(groupName => {
+  sortedKeys.forEach((groupName) => {
     var groupItems = groups[groupName];
-    var uniqueId = "grp_" + currentDepth + "_" + groupName.replace(/[^a-zA-Z0-9]/g, "") + "_" + Math.floor(Math.random() * 1000);
+    var uniqueId =
+      "grp_" + currentDepth + "_" + groupName.replace(/[^a-zA-Z0-9]/g, "") + "_" + Math.floor(Math.random() * 1000);
 
     // --- STYLING BASED ON DEPTH ---
     // Depth 0 (Level 1): Dark Grey Box
@@ -18466,23 +19204,28 @@ function renderNestedGroups(parentContainer, items, levels, currentDepth) {
     if (currentDepth === 0) {
       // 1. Removed margin-bottom on header (was 5px)
       // 2. Reduced content padding (10px -> 5px)
-      headerStyle = "background:#f5f5f5; border:1px solid #d1d5db; border-left:4px solid #546e7a; padding:8px 10px; font-weight:700; color:#546e7a; font-size:11px; margin-bottom:0px;";
+      headerStyle =
+        "background:#f5f5f5; border:1px solid #d1d5db; border-left:4px solid #546e7a; padding:8px 10px; font-weight:700; color:#546e7a; font-size:11px; margin-bottom:0px;";
       contentStyle += "padding:5px; border:1px solid #e0e0e0; border-top:none; background:#fafafa; margin-bottom:5px;";
     } else if (currentDepth === 1) {
       // 3. Reduced margin-top on sub-header (5px -> 1px) to pull it up
-      headerStyle = "background:#e3f2fd; border-left:3px solid #1565c0; padding:4px 8px; font-weight:700; color:#1565c0; font-size:10px; margin-top:1px;";
+      headerStyle =
+        "background:#e3f2fd; border-left:3px solid #1565c0; padding:4px 8px; font-weight:700; color:#1565c0; font-size:10px; margin-top:1px;";
       contentStyle += "padding:2px 0 2px 8px; border-left:1px solid #e3f2fd; margin-bottom:2px;";
     } else {
-      headerStyle = "background:#fff; border-bottom:1px solid #eee; padding:5px 10px; font-weight:600; color:#666; font-size:10px; margin-top:5px; font-style:italic;";
+      headerStyle =
+        "background:#fff; border-bottom:1px solid #eee; padding:5px 10px; font-weight:600; color:#666; font-size:10px; margin-top:5px; font-style:italic;";
       contentStyle += "padding:5px 0 5px 15px;";
     }
 
     // Create Header
     var header = document.createElement("div");
     header.className = "group-header depth-" + currentDepth; // Class for "Expand All"
-    header.style.cssText = headerStyle + " cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none;";
+    header.style.cssText =
+      headerStyle +
+      " cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none;";
 
-    var label = currentKey === "entity" ? "👤 " : (currentKey === "agreement" ? "📄 " : "");
+    var label = currentKey === "entity" ? "👤 " : currentKey === "agreement" ? "📄 " : "";
 
     header.innerHTML = `
             <div style="display:flex; align-items:center; gap:6px;">
@@ -18531,26 +19274,39 @@ function createClauseCard(item) {
   card.className = "slide-in clause-card-item";
 
   // 1. CONTAINER
-  card.style.cssText = "background:white; border:1px solid #ccc; border-left:4px solid #546e7a; margin-bottom:6px; border-radius:0px; overflow:hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;";
+  card.style.cssText =
+    "background:white; border:1px solid #ccc; border-left:4px solid #546e7a; margin-bottom:6px; border-radius:0px; overflow:hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;";
 
   var bodyId = "clause_body_" + Math.floor(Math.random() * 100000);
   var aiBoxId = "ai_box_" + Math.floor(Math.random() * 100000);
 
   // 2. BADGE STYLE
-  var badgeStyle = "font-size:9px; padding:1px 5px; border-radius:0px; font-weight:700; text-transform:uppercase; margin-right:6px; border:1px solid #ccc;";
+  var badgeStyle =
+    "font-size:9px; padding:1px 5px; border-radius:0px; font-weight:700; text-transform:uppercase; margin-right:6px; border:1px solid #ccc;";
   var typeColor = "#000";
   var typeBg = "#f5f5f5";
   var typeBorder = "#ccc";
 
-  if (item.type === "Standard") { typeBg = "#e8f5e9"; typeColor = "#006400"; }
-  else if (item.type === "Preferred") { typeBg = "#e3f2fd"; typeColor = "#0d47a1"; }
-  else if (item.type === "Negotiated") { typeBg = "#f3e5f5"; typeColor = "#4a148c"; }
-  else if (item.type === "Public") { typeBg = "#e0f7fa"; typeColor = "#006064"; }
+  if (item.type === "Standard") {
+    typeBg = "#e8f5e9";
+    typeColor = "#006400";
+  } else if (item.type === "Preferred") {
+    typeBg = "#e3f2fd";
+    typeColor = "#0d47a1";
+  } else if (item.type === "Negotiated") {
+    typeBg = "#f3e5f5";
+    typeColor = "#4a148c";
+  } else if (item.type === "Public") {
+    typeBg = "#e0f7fa";
+    typeColor = "#006064";
+  }
 
   // 3. META TAGS
   var metaHtml = "";
-  if (item.entity && item.entity !== "Standard") metaHtml += `<span style="color:#1565c0; margin-right:6px;">👤 ${item.entity}</span>`;
-  if (item.agreement && item.agreement !== "All") metaHtml += `<span style="color:#546e7a; margin-right:6px;">📄 ${item.agreement}</span>`;
+  if (item.entity && item.entity !== "Standard")
+    metaHtml += `<span style="color:#1565c0; margin-right:6px;">👤 ${item.entity}</span>`;
+  if (item.agreement && item.agreement !== "All")
+    metaHtml += `<span style="color:#546e7a; margin-right:6px;">📄 ${item.agreement}</span>`;
   if (item.date) metaHtml += `<span style="color:#1565c0;">🗓️ ${item.date}</span>`;
 
   card.innerHTML = `
@@ -18587,15 +19343,34 @@ function createClauseCard(item) {
     `;
 
   // --- BIND ACTIONS ---
-  card.querySelector(".btn-insert").onclick = (e) => { e.stopPropagation(); insertText(item.text); };
+  card.querySelector(".btn-insert").onclick = (e) => {
+    e.stopPropagation();
+    insertText(item.text);
+  };
 
   // NEW BINDING
-  card.querySelector(".btn-rewrite").onclick = (e) => { e.stopPropagation(); showRewriteEditor(item.text); };
+  card.querySelector(".btn-rewrite").onclick = (e) => {
+    e.stopPropagation();
+    showRewriteEditor(item.text);
+  };
 
-  card.querySelector(".btn-copy").onclick = (e) => { e.stopPropagation(); navigator.clipboard.writeText(item.text); showToast("📋 Copied"); };
-  card.querySelector(".btn-edit").onclick = (e) => { e.stopPropagation(); showClauseEditor(item); };
-  card.querySelector(".btn-delete").onclick = (e) => { e.stopPropagation(); promptDelete(item.id); };
-  card.querySelector(".btn-info").onclick = (e) => { e.stopPropagation(); showInfoModal(item); };
+  card.querySelector(".btn-copy").onclick = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(item.text);
+    showToast("📋 Copied");
+  };
+  card.querySelector(".btn-edit").onclick = (e) => {
+    e.stopPropagation();
+    showClauseEditor(item);
+  };
+  card.querySelector(".btn-delete").onclick = (e) => {
+    e.stopPropagation();
+    promptDelete(item.id);
+  };
+  card.querySelector(".btn-info").onclick = (e) => {
+    e.stopPropagation();
+    showInfoModal(item);
+  };
 
   return card;
 }
@@ -18624,14 +19399,16 @@ function bindLibraryHeaderEvents() {
   // NEW: Add from Selection
   document.getElementById("btnAddSelection").onclick = function () {
     // Use the existing Word API helper
-    validateApiAndGetText(true).then(text => {
-      if (!text || text.length < 2) {
-        showToast("⚠️ Please select text in the document first.");
-        return;
-      }
-      // Open editor with text pre-filled
-      showClauseEditor(null, text);
-    }).catch(e => showToast("Error: " + e.message));
+    validateApiAndGetText(true)
+      .then((text) => {
+        if (!text || text.length < 2) {
+          showToast("⚠️ Please select text in the document first.");
+          return;
+        }
+        // Open editor with text pre-filled
+        showClauseEditor(null, text);
+      })
+      .catch((e) => showToast("Error: " + e.message));
   };
 
   // The "EXTRACT" button
@@ -18641,7 +19418,8 @@ function bindLibraryHeaderEvents() {
   // (Keep the rest of your existing code here for file inputs)
   var docInput = document.getElementById("libDocInput");
   docInput.onchange = function (e) {
-    var f = e.target.files[0]; if (!f) return;
+    var f = e.target.files[0];
+    if (!f) return;
     closeFloatingDialogs();
     showToast("⏳ Reading " + f.name + "...");
     handleFileSelect(f, function (payload) {
@@ -18671,77 +19449,78 @@ function bindLibraryFilterEvents() {
 function runSmartLibrarySearch(savedText) {
   var textPromise = savedText ? Promise.resolve(savedText) : validateApiAndGetText(true);
 
-  textPromise.then(selectionText => {
-    if (!selectionText || selectionText.trim().length < 2) {
-      showToast("⚠️ Select text first.");
-      return;
-    }
-
-    var cleanSel = selectionText.toLowerCase().trim();
-
-    // 1. GET ACTIVE FILTER
-    var scopeEl = document.getElementById("libraryScopeMode");
-    var scopeMode = scopeEl ? scopeEl.value : "all";
-
-    // 2. DEFINE THE DATA POOL BASED ON FILTER
-    var subset = [];
-    var scopeMsg = "";
-
-    if (scopeMode === "public") {
-      // SEARCH EXTERNAL ONLY
-      subset = eliClauseLibrary.filter(i => i.type === "Public");
-      scopeMsg = "External Resources";
-    } else if (scopeMode === "standard") {
-      // SEARCH COLGATE STANDARD ONLY
-      subset = eliClauseLibrary.filter(i => i.type === "Standard");
-      scopeMsg = "Colgate Standard";
-    } else if (scopeMode === "thirdparty") {
-      // SEARCH 3RD PARTY / NEGOTIATED
-      subset = eliClauseLibrary.filter(i => i.type !== "Standard" && i.type !== "Public");
-      scopeMsg = "3rd Party / Negotiated";
-    } else {
-      // SEARCH INTERNAL ALL (No Public)
-      subset = eliClauseLibrary.filter(i => i.type !== "Public");
-      scopeMsg = "Internal Library";
-    }
-
-    var results = [];
-
-    // 3. RUN MATCHING LOGIC
-    subset.forEach(item => {
-      // A. Exact Title Match
-      if (item.title && cleanSel === item.title.toLowerCase()) {
-        results.push({ item: item, score: 1.0, matchType: "Exact Title" });
+  textPromise
+    .then((selectionText) => {
+      if (!selectionText || selectionText.trim().length < 2) {
+        showToast("⚠️ Select text first.");
         return;
       }
 
-      // B. Similarity Match
-      var score = calculateTextSimilarity(selectionText, item.text);
+      var cleanSel = selectionText.toLowerCase().trim();
 
-      if (score >= userSettings.matchThreshold) {
-        results.push({ item: item, score: score, matchType: "Body Match" });
+      // 1. GET ACTIVE FILTER
+      var scopeEl = document.getElementById("libraryScopeMode");
+      var scopeMode = scopeEl ? scopeEl.value : "all";
+
+      // 2. DEFINE THE DATA POOL BASED ON FILTER
+      var subset = [];
+      var scopeMsg = "";
+
+      if (scopeMode === "public") {
+        // SEARCH EXTERNAL ONLY
+        subset = eliClauseLibrary.filter((i) => i.type === "Public");
+        scopeMsg = "External Resources";
+      } else if (scopeMode === "standard") {
+        // SEARCH COLGATE STANDARD ONLY
+        subset = eliClauseLibrary.filter((i) => i.type === "Standard");
+        scopeMsg = "Colgate Standard";
+      } else if (scopeMode === "thirdparty") {
+        // SEARCH 3RD PARTY / NEGOTIATED
+        subset = eliClauseLibrary.filter((i) => i.type !== "Standard" && i.type !== "Public");
+        scopeMsg = "3rd Party / Negotiated";
+      } else {
+        // SEARCH INTERNAL ALL (No Public)
+        subset = eliClauseLibrary.filter((i) => i.type !== "Public");
+        scopeMsg = "Internal Library";
       }
-    });
 
-    // 4. UPDATE STATE
-    window.currentMatchData = {
-      results: results,
-      selection: selectionText
-    };
+      var results = [];
 
-    // 5. RENDER
-    if (results.length === 0) {
-      var thresholdPct = Math.round(userSettings.matchThreshold * 100);
-      showToast(`⚠️ No matches found in ${scopeMsg}.`);
-      renderComparisonResults([], selectionText);
-      return;
-    }
+      // 3. RUN MATCHING LOGIC
+      subset.forEach((item) => {
+        // A. Exact Title Match
+        if (item.title && cleanSel === item.title.toLowerCase()) {
+          results.push({ item: item, score: 1.0, matchType: "Exact Title" });
+          return;
+        }
 
-    results.sort((a, b) => b.score - a.score);
-    renderComparisonResults(results, selectionText);
-    showToast(`🔍 Matched against: ${scopeMsg}`);
+        // B. Similarity Match
+        var score = calculateTextSimilarity(selectionText, item.text);
 
-  }).catch(e => showToast("Error: " + e.message));
+        if (score >= userSettings.matchThreshold) {
+          results.push({ item: item, score: score, matchType: "Body Match" });
+        }
+      });
+
+      // 4. UPDATE STATE
+      window.currentMatchData = {
+        results: results,
+        selection: selectionText,
+      };
+
+      // 5. RENDER
+      if (results.length === 0) {
+        var thresholdPct = Math.round(userSettings.matchThreshold * 100);
+        showToast(`⚠️ No matches found in ${scopeMsg}.`);
+        renderComparisonResults([], selectionText);
+        return;
+      }
+
+      results.sort((a, b) => b.score - a.score);
+      renderComparisonResults(results, selectionText);
+      showToast(`🔍 Matched against: ${scopeMsg}`);
+    })
+    .catch((e) => showToast("Error: " + e.message));
 }
 function calculateTextSimilarity(s1, s2) {
   if (!s1 || !s2) return 0;
@@ -18752,13 +19531,48 @@ function calculateTextSimilarity(s1, s2) {
 
   // B. Stop Words (Noise Filter)
   var stopWords = new Set([
-    "the", "and", "or", "of", "to", "a", "in", "for", "is", "on", "that", "by", "this", "with", "it", "as", "be", "are", "at", "from", "an", "was", "have", "not",
-    "agreement", "party", "parties", "shall", "will", "section", "clause", "hereby", "herein", "thereto", "subject", "terms", "conditions"
+    "the",
+    "and",
+    "or",
+    "of",
+    "to",
+    "a",
+    "in",
+    "for",
+    "is",
+    "on",
+    "that",
+    "by",
+    "this",
+    "with",
+    "it",
+    "as",
+    "be",
+    "are",
+    "at",
+    "from",
+    "an",
+    "was",
+    "have",
+    "not",
+    "agreement",
+    "party",
+    "parties",
+    "shall",
+    "will",
+    "section",
+    "clause",
+    "hereby",
+    "herein",
+    "thereto",
+    "subject",
+    "terms",
+    "conditions",
   ]);
 
   function getTokens(str) {
     // Split by space, filter out short words & stop words
-    return str.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+    return str.split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
   }
 
   var tokens1 = new Set(getTokens(clean1));
@@ -18769,7 +19583,7 @@ function calculateTextSimilarity(s1, s2) {
 
   // D. Calculate Intersection
   var intersection = 0;
-  tokens1.forEach(t => {
+  tokens1.forEach((t) => {
     if (tokens2.has(t)) intersection++;
   });
 
@@ -18799,10 +19613,10 @@ function renderComparisonResults(results, userSelection) {
   var g1 = document.getElementById("groupBy1").value;
   var g2 = document.getElementById("groupBy2").value;
   var g3 = document.getElementById("groupBy3").value;
-  var groupLevels = [g1, g2, g3].filter(g => g && g !== "none");
+  var groupLevels = [g1, g2, g3].filter((g) => g && g !== "none");
 
   // 2. Render Logic
-  // FIX: Removed the "results.length > 2" check. 
+  // FIX: Removed the "results.length > 2" check.
   // Now it ALWAYS groups if the user selected a group, ensuring UI consistency when switching tabs.
   if (groupLevels.length > 0) {
     renderNestedMatchGroups(container, results, groupLevels, 0, userSelection);
@@ -18829,7 +19643,7 @@ function renderNestedMatchGroups(parentContainer, items, levels, currentDepth, u
   var currentKey = levels[currentDepth];
   var groups = {};
 
-  items.forEach(res => {
+  items.forEach((res) => {
     // Access the underlying clause item via res.item
     var val = res.item[currentKey] || "Uncategorized";
     if (!groups[val]) groups[val] = [];
@@ -18840,29 +19654,40 @@ function renderNestedMatchGroups(parentContainer, items, levels, currentDepth, u
   var sortedKeys = Object.keys(groups).sort();
 
   // 3. Render Groups
-  sortedKeys.forEach(groupName => {
+  sortedKeys.forEach((groupName) => {
     var groupItems = groups[groupName];
-    var uniqueId = "match_grp_" + currentDepth + "_" + groupName.replace(/[^a-zA-Z0-9]/g, "") + "_" + Math.floor(Math.random() * 1000);
+    var uniqueId =
+      "match_grp_" +
+      currentDepth +
+      "_" +
+      groupName.replace(/[^a-zA-Z0-9]/g, "") +
+      "_" +
+      Math.floor(Math.random() * 1000);
 
     // Styling (Same as Library)
     var headerStyle = "";
     var contentStyle = "display:none;"; // Collapsed by default
 
     if (currentDepth === 0) {
-      headerStyle = "background:#f5f5f5; border:1px solid #d1d5db; border-left:4px solid #546e7a; padding:8px 10px; font-weight:700; color:#546e7a; font-size:11px; margin-bottom:5px;";
+      headerStyle =
+        "background:#f5f5f5; border:1px solid #d1d5db; border-left:4px solid #546e7a; padding:8px 10px; font-weight:700; color:#546e7a; font-size:11px; margin-bottom:5px;";
       contentStyle += "padding:10px; border:1px solid #e0e0e0; border-top:none; background:#fafafa; margin-bottom:5px;";
     } else if (currentDepth === 1) {
-      headerStyle = "background:#e3f2fd; border-left:3px solid #1565c0; padding:6px 10px; font-weight:700; color:#1565c0; font-size:10px; margin-top:5px;";
+      headerStyle =
+        "background:#e3f2fd; border-left:3px solid #1565c0; padding:6px 10px; font-weight:700; color:#1565c0; font-size:10px; margin-top:5px;";
       contentStyle += "padding:5px 0 5px 10px; border-left:1px solid #e3f2fd; margin-bottom:5px;";
     } else {
-      headerStyle = "background:#fff; border-bottom:1px solid #eee; padding:5px 10px; font-weight:600; color:#666; font-size:10px; margin-top:5px; font-style:italic;";
+      headerStyle =
+        "background:#fff; border-bottom:1px solid #eee; padding:5px 10px; font-weight:600; color:#666; font-size:10px; margin-top:5px; font-style:italic;";
       contentStyle += "padding:5px 0 5px 15px;";
     }
 
     var header = document.createElement("div");
-    header.style.cssText = headerStyle + " cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none;";
+    header.style.cssText =
+      headerStyle +
+      " cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none;";
 
-    var label = currentKey === "entity" ? "👤 " : (currentKey === "agreement" ? "📄 " : "");
+    var label = currentKey === "entity" ? "👤 " : currentKey === "agreement" ? "📄 " : "";
 
     header.innerHTML = `
             <div style="display:flex; align-items:center; gap:6px;">
@@ -18900,7 +19725,7 @@ function renderNestedMatchGroups(parentContainer, items, levels, currentDepth, u
 function createMatchCard(res, index, userSelection) {
   var item = res.item;
   var percentage = Math.floor(res.score * 100);
-  var diffHtml = (typeof generateDiffHtml === "function") ? generateDiffHtml(userSelection, item.text) : item.text;
+  var diffHtml = typeof generateDiffHtml === "function" ? generateDiffHtml(userSelection, item.text) : item.text;
 
   var badgeColor = res.matchType === "Exact Title" ? "#2e7d32" : "#1565c0";
   var uniqueId = "match_" + index + "_" + Math.floor(Math.random() * 1000);
@@ -18913,7 +19738,10 @@ function createMatchCard(res, index, userSelection) {
 
   var card = document.createElement("div");
   card.className = "tool-box slide-in";
-  card.style.cssText = "padding:12px; margin-bottom:12px; background:white; border:1px solid #cfd8dc; border-left:4px solid " + badgeColor + "; box-shadow:0 2px 8px rgba(0,0,0,0.06); border-radius:0px;";
+  card.style.cssText =
+    "padding:12px; margin-bottom:12px; background:white; border:1px solid #cfd8dc; border-left:4px solid " +
+    badgeColor +
+    "; box-shadow:0 2px 8px rgba(0,0,0,0.06); border-radius:0px;";
 
   var btnStyle = `
             background: linear-gradient(to bottom, #ffffff 0%, #f1f1f1 100%);
@@ -18973,25 +19801,38 @@ function createMatchCard(res, index, userSelection) {
 
   // Bindings
   var btns = card.querySelectorAll("button");
-  btns.forEach(b => {
-    b.onmouseover = function () { this.style.background = "#fff"; };
-    b.onmouseout = function () { this.style.background = "linear-gradient(to bottom, #ffffff 0%, #f1f1f1 100%)"; };
+  btns.forEach((b) => {
+    b.onmouseover = function () {
+      this.style.background = "#fff";
+    };
+    b.onmouseout = function () {
+      this.style.background = "linear-gradient(to bottom, #ffffff 0%, #f1f1f1 100%)";
+    };
   });
 
-  card.querySelector(".btn-insert").onclick = () => { insertText(item.text); };
+  card.querySelector(".btn-insert").onclick = () => {
+    insertText(item.text);
+  };
   card.querySelector(".btn-copy").onclick = () => {
     navigator.clipboard.writeText(item.text);
     showToast("📋 Copied");
   };
-  card.querySelector(".btn-comment").onclick = () => { insertClauseAsComment(item); };
+  card.querySelector(".btn-comment").onclick = () => {
+    insertClauseAsComment(item);
+  };
 
   // NEW BINDING
-  card.querySelector(".btn-rewrite").onclick = () => { showRewriteEditor(item.text); };
+  card.querySelector(".btn-rewrite").onclick = () => {
+    showRewriteEditor(item.text);
+  };
 
   card.querySelector(".btn-analyze").onclick = function () {
     var btn = this;
     var output = document.getElementById("ai_box_" + uniqueId);
-    if (output.style.display !== "none") { output.style.display = "none"; return; }
+    if (output.style.display !== "none") {
+      output.style.display = "none";
+      return;
+    }
 
     btn.innerText = "⏳...";
     btn.disabled = true;
@@ -19028,25 +19869,27 @@ function runAIClauseComparison(userText, libText, outputContainer, btnElement) {
     `;
 
   // Call Gemini
-  callGemini(null, prompt).then(response => {
-    // Format response (Markdown to HTML basics)
-    var formatted = response
-      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>") // Bold Markdown -> HTML
-      .replace(/\n/g, "<br>"); // Newlines -> <br>
+  callGemini(null, prompt)
+    .then((response) => {
+      // Format response (Markdown to HTML basics)
+      var formatted = response
+        .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>") // Bold Markdown -> HTML
+        .replace(/\n/g, "<br>"); // Newlines -> <br>
 
-    outputContainer.innerHTML = `<div style="line-height:1.5;">${formatted}</div>`;
+      outputContainer.innerHTML = `<div style="line-height:1.5;">${formatted}</div>`;
 
-    // Update Button State
-    btnElement.innerText = "✅ DONE";
-    btnElement.style.background = "#2e7d32"; // Green
-    btnElement.style.color = "white";
-    btnElement.style.border = "1px solid #1b5e20";
-  }).catch(e => {
-    outputContainer.innerHTML = "Error: " + e.message;
-    btnElement.innerText = "RETRY";
-    btnElement.disabled = false;
-    btnElement.style.background = "#c62828";
-  });
+      // Update Button State
+      btnElement.innerText = "✅ DONE";
+      btnElement.style.background = "#2e7d32"; // Green
+      btnElement.style.color = "white";
+      btnElement.style.border = "1px solid #1b5e20";
+    })
+    .catch((e) => {
+      outputContainer.innerHTML = "Error: " + e.message;
+      btnElement.innerText = "RETRY";
+      btnElement.disabled = false;
+      btnElement.style.background = "#c62828";
+    });
 }
 function insertClauseAsComment(item) {
   Word.run(function (context) {
@@ -19054,9 +19897,10 @@ function insertClauseAsComment(item) {
     var selection = context.document.getSelection();
 
     // 2. Build the "Negotiation Note"
-    var note = `PRECEDENT CITE:\n` +
-      `We previously agreed to this clause in the "${item.agreement || 'Previous'}" agreement.\n` +
-      `Date: ${item.date || 'Unknown'}\n\n` +
+    var note =
+      `PRECEDENT CITE:\n` +
+      `We previously agreed to this clause in the "${item.agreement || "Previous"}" agreement.\n` +
+      `Date: ${item.date || "Unknown"}\n\n` +
       `STANDARD TEXT:\n"${item.text}"`;
 
     // 3. Add Comment
@@ -19065,7 +19909,7 @@ function insertClauseAsComment(item) {
     return context.sync();
   })
     .then(() => showToast("💬 Comment Attached"))
-    .catch(e => showToast("Error: " + e.message));
+    .catch((e) => showToast("Error: " + e.message));
 }
 window.toggleClauseBody = function (id, header) {
   var body = document.getElementById(id);
@@ -19082,38 +19926,36 @@ window.toggleClauseBody = function (id, header) {
   }
 };
 window.toggleAllClauses = function (show) {
-  var display = show ? 'block' : 'none';
-  var arrow = show ? '▼' : '▶';
-  var bg = show ? '#f0f7ff' : '#ffffff'; // Highlights header when expanded
+  var display = show ? "block" : "none";
+  var arrow = show ? "▼" : "▶";
+  var bg = show ? "#f0f7ff" : "#ffffff"; // Highlights header when expanded
 
   // 1. Toggle Groups (The Folders)
-  document.querySelectorAll('.group-content').forEach(el => el.style.display = display);
-  document.querySelectorAll('.arrow-icon').forEach(el => el.innerText = arrow);
+  document.querySelectorAll(".group-content").forEach((el) => (el.style.display = display));
+  document.querySelectorAll(".arrow-icon").forEach((el) => (el.innerText = arrow));
 
   // 2. Toggle Individual Clauses (The Cards) <-- THIS WAS MISSING
-  document.querySelectorAll('.clause-body').forEach(el => el.style.display = display);
-  document.querySelectorAll('.clause-arrow').forEach(el => el.innerText = arrow);
+  document.querySelectorAll(".clause-body").forEach((el) => (el.style.display = display));
+  document.querySelectorAll(".clause-arrow").forEach((el) => (el.innerText = arrow));
 
   // 3. Optional: Highlight Headers so you know they are open
-  document.querySelectorAll('.clause-header').forEach(el => el.style.background = bg);
+  document.querySelectorAll(".clause-header").forEach((el) => (el.style.background = bg));
 };
 function updateDropdownExclusions() {
   var ids = ["groupBy1", "groupBy2", "groupBy3"];
-  var selects = ids.map(id => document.getElementById(id));
-  var values = selects.map(s => s.value);
+  var selects = ids.map((id) => document.getElementById(id));
+  var values = selects.map((s) => s.value);
 
   selects.forEach((sel, index) => {
     // Loop through every option in this dropdown
-    Array.from(sel.options).forEach(opt => {
+    Array.from(sel.options).forEach((opt) => {
       // Check if this option's value is selected in another dropdown
       // (We ignore "none" because you can have "none" multiple times)
-      var isSelectedElsewhere = values.some((val, vIndex) =>
-        val === opt.value && vIndex !== index && val !== "none"
-      );
+      var isSelectedElsewhere = values.some((val, vIndex) => val === opt.value && vIndex !== index && val !== "none");
 
       if (isSelectedElsewhere) {
         opt.style.display = "none"; // Hide it visually
-        opt.disabled = true;       // Disable selection
+        opt.disabled = true; // Disable selection
       } else {
         opt.style.display = "block";
         opt.disabled = false;
@@ -19134,7 +19976,7 @@ function handleExportJSON() {
   // 2. Try Auto-Download (Best Effort)
   try {
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
-    var a = document.createElement('a');
+    var a = document.createElement("a");
     a.href = dataStr;
     a.download = "ELI_Clause_Library.json";
     document.body.appendChild(a);
@@ -19147,12 +19989,14 @@ function handleExportJSON() {
   // 3. SHOW MANUAL BACKUP MODAL (The Fix)
   // This ensures you can ALWAYS get your data, even if the browser blocks the file.
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center;";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center;";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
   // Using your squared-off styling
-  box.style.cssText = "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.3); display:flex; flex-direction:column;";
+  box.style.cssText =
+    "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.3); display:flex; flex-direction:column;";
 
   box.innerHTML = `
         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding:12px 15px; border-bottom:3px solid #c9a227; display:flex; justify-content:space-between; align-items:center;">
@@ -19179,7 +20023,9 @@ function handleExportJSON() {
   document.body.appendChild(overlay);
 
   // Bindings
-  document.getElementById("btnCloseExport").onclick = function () { overlay.remove(); };
+  document.getElementById("btnCloseExport").onclick = function () {
+    overlay.remove();
+  };
 
   document.getElementById("btnCopyExport").onclick = function () {
     var txt = document.getElementById("exportArea");
@@ -19197,7 +20043,7 @@ function handleExportJSON() {
 
   document.getElementById("btnRetryDownload").onclick = function () {
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
-    var a = document.createElement('a');
+    var a = document.createElement("a");
     a.href = dataStr;
     a.download = "ELI_Clause_Library.json";
     document.body.appendChild(a);
@@ -19234,11 +20080,13 @@ function handleImportJSON(e) {
 // ==========================================
 function showImportStrategyModal(newData) {
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:380px; padding:0; border-radius:0px; border:1px solid #1565c0; border-left:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column;";
+  box.style.cssText =
+    "background:white; width:380px; padding:0; border-radius:0px; border:1px solid #1565c0; border-left:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column;";
 
   var viewMain = `
         <div style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); padding:15px; border-bottom:3px solid #c9a227;">
@@ -19300,7 +20148,7 @@ function showImportStrategyModal(newData) {
       var existingSignatures = new Set();
       var existingIds = new Set();
 
-      eliClauseLibrary.forEach(item => {
+      eliClauseLibrary.forEach((item) => {
         if (item.id) existingIds.add(String(item.id));
         // Signature: Title + First 20 chars of text (normalized)
         var sig = (item.title + "|" + (item.text || "").substring(0, 20)).toLowerCase();
@@ -19308,7 +20156,7 @@ function showImportStrategyModal(newData) {
       });
 
       // 2. Process Incoming Data
-      newData.forEach(item => {
+      newData.forEach((item) => {
         // A. Ensure ID exists
         if (!item.id) {
           item.id = "cl_imp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
@@ -19332,7 +20180,7 @@ function showImportStrategyModal(newData) {
     // --- FORCE ADD (Keep All) ---
     document.getElementById("btnForceAdd").onclick = function () {
       // Just ensure unique IDs so we don't break the UI
-      newData.forEach(item => {
+      newData.forEach((item) => {
         // Always regenerate ID to avoid collision
         item.id = "cl_imp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
       });
@@ -19354,7 +20202,7 @@ function showImportStrategyModal(newData) {
   function bindDangerEvents() {
     document.getElementById("btnConfirmOverwrite").onclick = function () {
       // Ensure IDs on the new set before replacing
-      newData.forEach(item => {
+      newData.forEach((item) => {
         if (!item.id) item.id = "cl_imp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
       });
 
@@ -19384,25 +20232,28 @@ function showClauseEditor(existing, prefill) {
   var initialText = d.text || prefill || "";
 
   // 1. GATHER EXISTING DATA FOR DROPDOWNS
-  var uniqueCats = [...new Set(eliClauseLibrary.map(i => i.category).filter(Boolean))].sort();
-  var uniqueEnts = [...new Set(eliClauseLibrary.map(i => i.entity).filter(Boolean))].sort();
-  var uniqueAgs = [...new Set(eliClauseLibrary.map(i => i.agreement).filter(Boolean))].sort();
+  var uniqueCats = [...new Set(eliClauseLibrary.map((i) => i.category).filter(Boolean))].sort();
+  var uniqueEnts = [...new Set(eliClauseLibrary.map((i) => i.entity).filter(Boolean))].sort();
+  var uniqueAgs = [...new Set(eliClauseLibrary.map((i) => i.agreement).filter(Boolean))].sort();
 
-  var buildOpts = (arr) => arr.map(v => `<option value="${v}">`).join("");
+  var buildOpts = (arr) => arr.map((v) => `<option value="${v}">`).join("");
 
   // 2. Create Overlay
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:400px; padding:20px; border-left:5px solid #1565c0; box-shadow:0 10px 25px rgba(0,0,0,0.5); border-radius:0px;";
+  box.style.cssText =
+    "background:white; width:400px; padding:20px; border-left:5px solid #1565c0; box-shadow:0 10px 25px rgba(0,0,0,0.5); border-radius:0px;";
 
-  var inputStyle = "width:100%; height:28px; font-size:11px; margin-bottom:8px; padding:4px; box-sizing:border-box; border-radius:0px;";
+  var inputStyle =
+    "width:100%; height:28px; font-size:11px; margin-bottom:8px; padding:4px; box-sizing:border-box; border-radius:0px;";
 
   // --- PREPARE DATE ---
   // Ensure we have a valid YYYY-MM-DD for the input
-  var dateVal = d.date || new Date().toISOString().split('T')[0];
+  var dateVal = d.date || new Date().toISOString().split("T")[0];
   if (dateVal.includes("/")) dateVal = dateVal.replace(/\//g, "-");
 
   // 3. Render Form
@@ -19421,12 +20272,12 @@ function showClauseEditor(existing, prefill) {
             <div>
                 <label class="tool-label">Type</label>
                 <select id="edType" class="tool-input" style="${inputStyle}">
-                    <option value="Standard" ${d.type === 'Standard' ? 'selected' : ''}>Standard</option>
-                    <option value="Negotiated" ${d.type === 'Negotiated' ? 'selected' : ''}>Negotiated</option>
-                    <option value="Fallback" ${d.type === 'Fallback' ? 'selected' : ''}>Fallback</option>
-                    <option value="Preferred" ${d.type === 'Preferred' ? 'selected' : ''}>Preferred</option>
-                    <option value="Public" ${d.type === 'Public' ? 'selected' : ''}>Public Resource</option>
-                    <option value="Bad Clause" ${d.type === 'Bad Clause' ? 'selected' : ''}>Bad Clause</option>
+                    <option value="Standard" ${d.type === "Standard" ? "selected" : ""}>Standard</option>
+                    <option value="Negotiated" ${d.type === "Negotiated" ? "selected" : ""}>Negotiated</option>
+                    <option value="Fallback" ${d.type === "Fallback" ? "selected" : ""}>Fallback</option>
+                    <option value="Preferred" ${d.type === "Preferred" ? "selected" : ""}>Preferred</option>
+                    <option value="Public" ${d.type === "Public" ? "selected" : ""}>Public Resource</option>
+                    <option value="Bad Clause" ${d.type === "Bad Clause" ? "selected" : ""}>Bad Clause</option>
                 </select>
             </div>
         </div>
@@ -19475,10 +20326,13 @@ function showClauseEditor(existing, prefill) {
       var txt = box.querySelector("#edText").value;
       var dateInput = box.querySelector("#edDate").value;
 
-      if (!title || !txt) { showToast("⚠️ Title & Text required"); return; }
+      if (!title || !txt) {
+        showToast("⚠️ Title & Text required");
+        return;
+      }
 
       // Use input date, or fallback to today if cleared
-      var finalDate = dateInput || new Date().toISOString().split('T')[0];
+      var finalDate = dateInput || new Date().toISOString().split("T")[0];
 
       var newItem = {
         id: isEdit ? d.id : "cl_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
@@ -19490,11 +20344,11 @@ function showClauseEditor(existing, prefill) {
         entity: box.querySelector("#edEntity").value || "Standard",
         date: finalDate, // Saved as YYYY-MM-DD
         jurisdiction: d.jurisdiction || "",
-        source: d.source || "Manual Entry"
+        source: d.source || "Manual Entry",
       };
 
       if (isEdit) {
-        var idx = eliClauseLibrary.findIndex(x => x.id === d.id);
+        var idx = eliClauseLibrary.findIndex((x) => x.id === d.id);
         if (idx !== -1) eliClauseLibrary[idx] = newItem;
       } else {
         eliClauseLibrary.push(newItem);
@@ -19516,7 +20370,8 @@ function showAIImportOptions() {
   var box = document.createElement("div");
   box.id = "floatingDialog";
   box.className = "slide-in";
-  box.style.cssText = "position:absolute; top:60px; left:10%; width:80%; background:white; padding:15px; border-top:4px solid #fbc02d; box-shadow:0 10px 30px rgba(0,0,0,0.3); border-radius:0px; z-index:1000;";
+  box.style.cssText =
+    "position:absolute; top:60px; left:10%; width:80%; background:white; padding:15px; border-top:4px solid #fbc02d; box-shadow:0 10px 30px rgba(0,0,0,0.3); border-radius:0px; z-index:1000;";
 
   box.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -19574,14 +20429,19 @@ function showAIImportOptions() {
   document.getElementById("btnScanActive").onclick = function () {
     closeFloatingDialogs();
     setLoading(true);
-    validateApiAndGetText().then(text => {
-      setLoading(false);
-      if (!text) { showToast("⚠️ No text found."); return; }
-      showExtractionStrategy(text, "Active Document");
-    }).catch(e => {
-      setLoading(false);
-      showToast("Error: " + e.message);
-    });
+    validateApiAndGetText()
+      .then((text) => {
+        setLoading(false);
+        if (!text) {
+          showToast("⚠️ No text found.");
+          return;
+        }
+        showExtractionStrategy(text, "Active Document");
+      })
+      .catch((e) => {
+        setLoading(false);
+        showToast("Error: " + e.message);
+      });
   };
 
   document.getElementById("btnScanUpload").onclick = function () {
@@ -19594,13 +20454,24 @@ function showExtractionStrategy(payload, sourceName) {
 
   // Default Key Clauses List
   // Use saved settings, or fall back to defaults if empty
-  var defaultKeys = userSettings.extractionTerms && userSettings.extractionTerms.length > 0
-    ? userSettings.extractionTerms
-    : ["Indemnity", "Liability", "Termination", "Confidentiality", "Governing Law", "Warranty", "Force Majeure", "IP Rights"];
+  var defaultKeys =
+    userSettings.extractionTerms && userSettings.extractionTerms.length > 0
+      ? userSettings.extractionTerms
+      : [
+          "Indemnity",
+          "Liability",
+          "Termination",
+          "Confidentiality",
+          "Governing Law",
+          "Warranty",
+          "Force Majeure",
+          "IP Rights",
+        ];
   var box = document.createElement("div");
   box.id = "floatingDialog";
   box.className = "slide-in";
-  box.style.cssText = "position:absolute; top:60px; left:10%; width:80%; background:white; padding:15px; border-top:4px solid #1565c0; box-shadow:0 10px 30px rgba(0,0,0,0.3); border-radius:4px; z-index:1000;";
+  box.style.cssText =
+    "position:absolute; top:60px; left:10%; width:80%; background:white; padding:15px; border-top:4px solid #1565c0; box-shadow:0 10px 30px rgba(0,0,0,0.3); border-radius:4px; z-index:1000;";
 
   box.innerHTML = `
         <div style="font-weight:800; color:#1565c0; font-size:12px; margin-bottom:10px; text-transform:uppercase;">Step 2: Extraction Strategy</div>
@@ -19625,11 +20496,15 @@ function showExtractionStrategy(payload, sourceName) {
         <div id="keyClauseList" style="display:none; margin-left:25px; margin-bottom:15px; border-left:2px solid #ddd; padding-left:10px;">
             <div style="font-size:10px; color:#999; margin-bottom:5px;">SELECT TARGETS:</div>
             <div id="chkContainer" style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:8px;">
-                ${defaultKeys.map(k => `
+                ${defaultKeys
+                  .map(
+                    (k) => `
                     <label style="font-size:11px; display:flex; gap:5px; align-items:center;">
                         <input type="checkbox" value="${k}" checked> ${k}
                     </label>
-                `).join('')}
+                `,
+                  )
+                  .join("")}
             </div>
             <div style="display:flex; gap:5px;">
                 <input type="text" id="newKeyClause" placeholder="+ Add Custom Type" style="font-size:11px; padding:4px; border:1px solid #ccc; flex:1;">
@@ -19648,9 +20523,12 @@ function showExtractionStrategy(payload, sourceName) {
   // Toggle Checklist Visibility
   var radios = box.querySelectorAll('input[name="extMode"]');
   var listDiv = document.getElementById("keyClauseList");
-  radios.forEach(r => r.onchange = () => {
-    listDiv.style.display = (r.value === "KEY") ? "block" : "none";
-  });
+  radios.forEach(
+    (r) =>
+      (r.onchange = () => {
+        listDiv.style.display = r.value === "KEY" ? "block" : "none";
+      }),
+  );
 
   // Add Custom Tag Logic
   document.getElementById("btnAddKey").onclick = () => {
@@ -19674,7 +20552,7 @@ function showExtractionStrategy(payload, sourceName) {
 
     if (mode === "KEY") {
       // Gather checked items
-      var checked = Array.from(document.querySelectorAll('#chkContainer input:checked')).map(c => c.value);
+      var checked = Array.from(document.querySelectorAll("#chkContainer input:checked")).map((c) => c.value);
       if (checked.length === 0) {
         showToast("⚠️ Select at least one clause type.");
         return;
@@ -19738,43 +20616,51 @@ function runAIClauseExtraction(inputPayload, docName, targetList) {
     parts = [{ text: promptText + "\n\nDOCUMENT TEXT:\n" + safeText }];
   }
 
-  callGemini(null, parts).then(result => {
-    setLoading(false);
-    try {
-      var extracted = tryParseGeminiJSON(result);
+  callGemini(null, parts)
+    .then((result) => {
+      setLoading(false);
+      try {
+        var extracted = tryParseGeminiJSON(result);
 
-      if (Array.isArray(extracted)) {
-        // --- CLIENT-SIDE CLEANUP ---
-        extracted.forEach(item => {
-          // 1. Tag Definitions if needed (Failsafe)
-          if (item.title && !item.category) {
-            if (item.title.startsWith('"') || item.text.trim().startsWith('"')) {
-              item.category = "Definition";
+        if (Array.isArray(extracted)) {
+          // --- CLIENT-SIDE CLEANUP ---
+          extracted.forEach((item) => {
+            // 1. Tag Definitions if needed (Failsafe)
+            if (item.title && !item.category) {
+              if (item.title.startsWith('"') || item.text.trim().startsWith('"')) {
+                item.category = "Definition";
+              }
             }
-          }
 
-          // 2. Strip Headers from Body Text
-          var prefix = ((item.clause_number || "") + " " + (item.title || "")).trim();
-          if (item.clause_number && item.text.startsWith(item.clause_number)) {
-            item.text = item.text.substring(item.clause_number.length).replace(/^[\.\:\-\s]+/, "").trim();
-          }
-          if (item.title && item.text.toLowerCase().startsWith(item.title.toLowerCase())) {
-            item.text = item.text.substring(item.title.length).replace(/^[\.\:\-\s]+/, "").trim();
-          }
-        });
+            // 2. Strip Headers from Body Text
+            var prefix = ((item.clause_number || "") + " " + (item.title || "")).trim();
+            if (item.clause_number && item.text.startsWith(item.clause_number)) {
+              item.text = item.text
+                .substring(item.clause_number.length)
+                .replace(/^[\.\:\-\s]+/, "")
+                .trim();
+            }
+            if (item.title && item.text.toLowerCase().startsWith(item.title.toLowerCase())) {
+              item.text = item.text
+                .substring(item.title.length)
+                .replace(/^[\.\:\-\s]+/, "")
+                .trim();
+            }
+          });
 
-        renderImportStaging(extracted, docName);
-      } else {
-        showToast("⚠️ No clauses found.");
+          renderImportStaging(extracted, docName);
+        } else {
+          showToast("⚠️ No clauses found.");
+        }
+      } catch (e) {
+        showToast("❌ Parsing Error");
+        console.error(e);
       }
-    } catch (e) {
-      showToast("❌ Parsing Error");
-      console.error(e);
-    }
-  }).catch(e => {
-    setLoading(false);
-    showToast("Error: " + e.message);
-  });
+    })
+    .catch((e) => {
+      setLoading(false);
+      showToast("Error: " + e.message);
+    });
 }
 // REPLACE: renderImportStaging (Full Validation: Category Included)
 // ==========================================
@@ -19783,13 +20669,13 @@ function renderImportStaging(items, docName) {
   out.innerHTML = "";
 
   // 1. GATHER DATA FOR DROPDOWNS
-  var uniqueCats = [...new Set(eliClauseLibrary.map(i => i.category).filter(Boolean))].sort();
-  var uniqueEnts = [...new Set(eliClauseLibrary.map(i => i.entity).filter(Boolean))].sort();
-  var uniqueAgs = [...new Set(eliClauseLibrary.map(i => i.agreement).filter(Boolean))].sort();
+  var uniqueCats = [...new Set(eliClauseLibrary.map((i) => i.category).filter(Boolean))].sort();
+  var uniqueEnts = [...new Set(eliClauseLibrary.map((i) => i.entity).filter(Boolean))].sort();
+  var uniqueAgs = [...new Set(eliClauseLibrary.map((i) => i.agreement).filter(Boolean))].sort();
 
   if (!uniqueCats.includes("Bad Clause")) uniqueCats.unshift("Bad Clause");
 
-  var buildOpts = (arr) => arr.map(v => `<option value="${v}">`).join("");
+  var buildOpts = (arr) => arr.map((v) => `<option value="${v}">`).join("");
 
   var datalistHtml = `
     <datalist id="dlImpCat">${buildOpts(uniqueCats)}</datalist>
@@ -19859,7 +20745,7 @@ function renderImportStaging(items, docName) {
       if (isDef) accentColor = "#7b1fa2"; // Purple
       if (isBad) accentColor = "#c62828"; // Red
 
-      var labelText = isDef ? "DEFINITION" : (isBad ? "BAD CLAUSE" : "CLAUSE");
+      var labelText = isDef ? "DEFINITION" : isBad ? "BAD CLAUSE" : "CLAUSE";
       var titlePlaceholder = isDef ? "Definition Name" : "Clause Title";
 
       card.style.cssText = `background:white; border:1px solid #ddd; border-left:4px solid ${accentColor}; padding:10px; margin-bottom:0px; border-radius:0px; position:relative; transition: border-left-color 0.3s;`;
@@ -19871,7 +20757,7 @@ function renderImportStaging(items, docName) {
 
       var dateValue = item.date || "";
       if (dateValue.includes("/")) dateValue = dateValue.replace(/\//g, "-");
-      if (!dateValue || dateValue.length < 10) dateValue = new Date().toISOString().split('T')[0];
+      if (!dateValue || dateValue.length < 10) dateValue = new Date().toISOString().split("T")[0];
 
       card.innerHTML = `
             <div style="position:absolute; top:2px; right:2px; font-size:8px; font-weight:800; color:${accentColor}; text-transform:uppercase; opacity:0.6;">${labelText}</div>
@@ -19882,28 +20768,28 @@ function renderImportStaging(items, docName) {
                 <div style="flex:1;">
                     <div style="display:flex; align-items:center; margin-bottom:6px;">
                         ${numHtml}
-                        <input type="text" class="imp-title tool-input" value="${item.title || ''}" style="font-weight:700; color:${accentColor}; margin:0; height:24px; flex:1; border:none; background:transparent;" placeholder="${titlePlaceholder}">
+                        <input type="text" class="imp-title tool-input" value="${item.title || ""}" style="font-weight:700; color:${accentColor}; margin:0; height:24px; flex:1; border:none; background:transparent;" placeholder="${titlePlaceholder}">
                         <button id="btnToggle_${uniqueId}" style="background:none; border:none; color:#999; font-size:10px; cursor:pointer; margin-left:5px;">▼</button>
                     </div>
 
-                    <textarea class="imp-text tool-input" style="height:60px; font-family:serif; font-size:11px; margin-bottom:6px; border-color:${isDef ? '#e1bee7' : (isBad ? '#ffcdd2' : '#ccc')};">${item.text || ''}</textarea>
+                    <textarea class="imp-text tool-input" style="height:60px; font-family:serif; font-size:11px; margin-bottom:6px; border-color:${isDef ? "#e1bee7" : isBad ? "#ffcdd2" : "#ccc"};">${item.text || ""}</textarea>
 
                     <div id="${uniqueId}" class="edit-area hidden" style="background:#f9f9f9; padding:8px; border:1px solid #eee; margin-top:5px;">
                         
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:5px;">
                             <div>
                                 <label style="font-size:9px; color:#555;">Category <span style="color:red">*</span></label>
-                                <input type="text" class="imp-cat tool-input" value="${item.category || 'General'}" list="dlImpCat" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
+                                <input type="text" class="imp-cat tool-input" value="${item.category || "General"}" list="dlImpCat" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
                             </div>
                             <div>
                                 <label style="font-size:9px; color:#555;">Type <span style="color:red">*</span></label>
                                 <select class="imp-type tool-input" style="height:24px; font-size:10px; margin:0; padding:0;">
-    <option value="Standard" ${item.type === 'Standard' ? 'selected' : ''}>Standard</option>
-    <option value="Public" ${item.type === 'Public' ? 'selected' : ''}>Public Resource</option>
-    <option value="Negotiated" ${!item.type || item.type === 'Negotiated' ? 'selected' : ''}>Negotiated</option>
-    <option value="Fallback" ${item.type === 'Fallback' ? 'selected' : ''}>Fallback</option>
-    <option value="Preferred" ${item.type === 'Preferred' ? 'selected' : ''}>Preferred</option>
-    <option value="Other" ${item.type === 'Other' ? 'selected' : ''}>Other</option> <option value="Bad Clause" ${item.type === 'Bad Clause' ? 'selected' : ''}>Bad Clause</option>
+    <option value="Standard" ${item.type === "Standard" ? "selected" : ""}>Standard</option>
+    <option value="Public" ${item.type === "Public" ? "selected" : ""}>Public Resource</option>
+    <option value="Negotiated" ${!item.type || item.type === "Negotiated" ? "selected" : ""}>Negotiated</option>
+    <option value="Fallback" ${item.type === "Fallback" ? "selected" : ""}>Fallback</option>
+    <option value="Preferred" ${item.type === "Preferred" ? "selected" : ""}>Preferred</option>
+    <option value="Other" ${item.type === "Other" ? "selected" : ""}>Other</option> <option value="Bad Clause" ${item.type === "Bad Clause" ? "selected" : ""}>Bad Clause</option>
 </select>
                             </div>
                         </div>
@@ -19911,11 +20797,11 @@ function renderImportStaging(items, docName) {
                         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
                             <div>
                                 <label style="font-size:9px; color:#555;">Party <span style="color:red">*</span></label>
-                                <input type="text" class="imp-ent tool-input" value="${item.entity || 'Standard'}" list="dlImpEnt" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
+                                <input type="text" class="imp-ent tool-input" value="${item.entity || "Standard"}" list="dlImpEnt" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
                             </div>
                             <div>
                                 <label style="font-size:9px; color:#555;">Agreement <span style="color:red">*</span></label>
-                                <input type="text" class="imp-ag tool-input" value="${item.agreement || 'All'}" list="dlImpAg" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
+                                <input type="text" class="imp-ag tool-input" value="${item.agreement || "All"}" list="dlImpAg" placeholder="Required..." style="height:24px; font-size:10px; margin:0;">
                             </div>
                             <div>
                                 <label style="font-size:9px; color:#555;">Date <span style="color:red">*</span></label>
@@ -19925,17 +20811,21 @@ function renderImportStaging(items, docName) {
 
                     </div>
                     
-                    <input type="hidden" class="imp-jur" value="${item.jurisdiction || ''}">
+                    <input type="hidden" class="imp-jur" value="${item.jurisdiction || ""}">
                 </div>
             </div>
         `;
 
       var btn = card.querySelector(`#btnToggle_${uniqueId}`);
-      if (btn) btn.onclick = () => document.getElementById(uniqueId).classList.toggle('hidden');
+      if (btn) btn.onclick = () => document.getElementById(uniqueId).classList.toggle("hidden");
 
       // --- SYNC EVENTS & ERROR CLEARING ---
-      card.querySelector(".imp-title").oninput = function () { item.title = this.value; };
-      card.querySelector(".imp-text").oninput = function () { item.text = this.value; };
+      card.querySelector(".imp-title").oninput = function () {
+        item.title = this.value;
+      };
+      card.querySelector(".imp-text").oninput = function () {
+        item.text = this.value;
+      };
 
       card.querySelector(".imp-type").onchange = function () {
         item.type = this.value;
@@ -19972,7 +20862,8 @@ function renderImportStaging(items, docName) {
 
     // INSERTION BUTTON (+)
     var insertRow = document.createElement("div");
-    insertRow.style.cssText = "text-align:center; height:14px; position:relative; cursor:pointer; margin-bottom:10px; opacity:0.3; transition:opacity 0.2s;";
+    insertRow.style.cssText =
+      "text-align:center; height:14px; position:relative; cursor:pointer; margin-bottom:10px; opacity:0.3; transition:opacity 0.2s;";
     insertRow.title = "Insert New Clause Here";
 
     insertRow.innerHTML = `
@@ -19980,11 +20871,15 @@ function renderImportStaging(items, docName) {
         <span style="position:relative; z-index:1; background:white; border:1px solid #ccc; color:#555; border-radius:50%; width:16px; height:16px; font-size:12px; line-height:14px; display:inline-block; font-weight:bold;">+</span>
     `;
 
-    insertRow.onmouseover = function () { this.style.opacity = "1"; };
-    insertRow.onmouseout = function () { this.style.opacity = "0.3"; };
+    insertRow.onmouseover = function () {
+      this.style.opacity = "1";
+    };
+    insertRow.onmouseout = function () {
+      this.style.opacity = "0.3";
+    };
 
     insertRow.onclick = function () {
-      var today = new Date().toISOString().split('T')[0];
+      var today = new Date().toISOString().split("T")[0];
       items.splice(idx + 1, 0, {
         title: "New Clause",
         text: "",
@@ -19993,13 +20888,12 @@ function renderImportStaging(items, docName) {
         entity: "",
         agreement: "",
         clause_number: "",
-        date: today
+        date: today,
       });
       renderImportStaging(items, docName);
     };
 
     listDiv.appendChild(insertRow);
-
   });
   out.appendChild(listDiv);
 
@@ -20024,10 +20918,10 @@ function renderImportStaging(items, docName) {
 
   // EVENTS
   document.getElementById("btnExpAll").onclick = function () {
-    listDiv.querySelectorAll('.edit-area').forEach(el => el.classList.remove('hidden'));
+    listDiv.querySelectorAll(".edit-area").forEach((el) => el.classList.remove("hidden"));
   };
   document.getElementById("btnColAll").onclick = function () {
-    listDiv.querySelectorAll('.edit-area').forEach(el => el.classList.add('hidden'));
+    listDiv.querySelectorAll(".edit-area").forEach((el) => el.classList.add("hidden"));
   };
 
   document.getElementById("btnBulkApply").onclick = function () {
@@ -20037,7 +20931,7 @@ function renderImportStaging(items, docName) {
     var bType = document.getElementById("bulkType").value;
     var bDate = document.getElementById("bulkDate").value;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       if (bEnt) item.entity = bEnt;
       if (bAg) item.agreement = bAg;
       if (bType) item.type = bType;
@@ -20091,7 +20985,7 @@ function renderImportStaging(items, docName) {
     cards.forEach((c, i) => {
       if (c.querySelector(".import-chk").checked) {
         var itemData = items[i];
-        var finalDate = itemData.date || new Date().toISOString().split('T')[0];
+        var finalDate = itemData.date || new Date().toISOString().split("T")[0];
 
         eliClauseLibrary.push({
           id: "cl_scan_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + "_" + i,
@@ -20103,7 +20997,7 @@ function renderImportStaging(items, docName) {
           entity: itemData.entity,
           date: finalDate, // YYYY-MM-DD
           jurisdiction: itemData.jurisdiction || "",
-          source: docName
+          source: docName,
         });
         count++;
       }
@@ -20128,13 +21022,20 @@ function showMatchSettings() {
   var box = document.createElement("div");
   box.id = "floatingDialog";
   box.className = "slide-in";
-  box.style.cssText = "position:absolute; top:50px; right:15px; width:280px; background:white; padding:15px; border:1px solid #ccc; box-shadow:0 10px 30px rgba(0,0,0,0.2); border-radius:0px; z-index:2000; border-top: 4px solid #333;";
+  box.style.cssText =
+    "position:absolute; top:50px; right:15px; width:280px; background:white; padding:15px; border:1px solid #ccc; box-shadow:0 10px 30px rgba(0,0,0,0.2); border-radius:0px; z-index:2000; border-top: 4px solid #333;";
 
   // Safety Init: Ensure lists exist before rendering
   if (!userSettings.extractionTerms || userSettings.extractionTerms.length === 0) {
     userSettings.extractionTerms = [
-      "Indemnity", "Liability", "Termination", "Confidentiality",
-      "Governing Law", "Warranty", "Force Majeure", "IP Rights"
+      "Indemnity",
+      "Liability",
+      "Termination",
+      "Confidentiality",
+      "Governing Law",
+      "Warranty",
+      "Force Majeure",
+      "IP Rights",
     ];
   }
   if (!userSettings.matchThreshold) userSettings.matchThreshold = 0.5;
@@ -20143,11 +21044,14 @@ function showMatchSettings() {
 
   // Helper: Render Tags
   function renderTags() {
-    return userSettings.extractionTerms.map(t =>
-      `<span style="background:#e3f2fd; color:#1565c0; padding:3px 6px; font-size:10px; margin-right:4px; margin-bottom:4px; display:inline-block; border:1px solid #bbdefb; font-weight:bold;">
+    return userSettings.extractionTerms
+      .map(
+        (t) =>
+          `<span style="background:#e3f2fd; color:#1565c0; padding:3px 6px; font-size:10px; margin-right:4px; margin-bottom:4px; display:inline-block; border:1px solid #bbdefb; font-weight:bold;">
                 ${t} <b class="del-tag" data-tag="${t}" style="cursor:pointer; color:#c62828; margin-left:5px;">&times;</b>
-            </span>`
-    ).join("");
+            </span>`,
+      )
+      .join("");
   }
 
   // UPDATED HEADER: Includes Flexbox justify-content:space-between and the Close X
@@ -20219,10 +21123,10 @@ function showMatchSettings() {
   // 4. Delete Term (Scoped Binding)
   function bindDelButtons() {
     var dels = box.querySelectorAll(".del-tag"); // Scope to box
-    dels.forEach(btn => {
+    dels.forEach((btn) => {
       btn.onclick = function () {
         var tag = this.dataset.tag;
-        userSettings.extractionTerms = userSettings.extractionTerms.filter(t => t !== tag);
+        userSettings.extractionTerms = userSettings.extractionTerms.filter((t) => t !== tag);
         document.getElementById("tagContainer").innerHTML = renderTags();
         bindDelButtons(); // Re-bind after re-render
       };
@@ -20233,24 +21137,24 @@ function showMatchSettings() {
   // 5. Save & Close
   document.getElementById("btnCloseSettings").onclick = function () {
     // Uses the global safe save function (assuming saveCurrentSettings exists globally or falling back to local storage)
-    if (typeof saveCurrentSettings === 'function') {
+    if (typeof saveCurrentSettings === "function") {
       saveCurrentSettings();
     } else {
       localStorage.setItem("eli_user_settings", JSON.stringify(userSettings));
     }
     box.remove();
-    if (typeof showToast === 'function') showToast("✅ Settings Saved");
+    if (typeof showToast === "function") showToast("✅ Settings Saved");
   };
 }
 var targetToDelete = null; // Global tracker
 
 function promptDelete(target) {
-  if (target === 'all') {
-    if (typeof showBulkDeleteModal === 'function') {
+  if (target === "all") {
+    if (typeof showBulkDeleteModal === "function") {
       showBulkDeleteModal(); // Use advanced wizard if available
     } else {
       // Fallback for simple delete all
-      targetToDelete = 'all';
+      targetToDelete = "all";
       showDeleteConfirmation("Delete ALL clauses from library?");
     }
   } else {
@@ -20281,7 +21185,7 @@ function showDeleteConfirmation(msg) {
         </div>
     `;
 
-  var div = document.createElement('div');
+  var div = document.createElement("div");
   div.innerHTML = modalHTML;
   document.body.appendChild(div.firstElementChild);
 
@@ -20291,10 +21195,10 @@ function showDeleteConfirmation(msg) {
   };
 
   document.getElementById("modalBtnConfirm").onclick = function () {
-    if (targetToDelete === 'all') {
+    if (targetToDelete === "all") {
       eliClauseLibrary = [];
     } else {
-      eliClauseLibrary = eliClauseLibrary.filter(x => x.id !== targetToDelete);
+      eliClauseLibrary = eliClauseLibrary.filter((x) => x.id !== targetToDelete);
     }
     saveClauseLibrary();
     refreshLibraryList();
@@ -20304,14 +21208,16 @@ function showDeleteConfirmation(msg) {
 }
 function showBulkDeleteModal() {
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #c62828; border-left:5px solid #c62828; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column; max-height: 85vh;";
+  box.style.cssText =
+    "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #c62828; border-left:5px solid #c62828; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column; max-height: 85vh;";
 
   var hierarchy = {};
-  eliClauseLibrary.forEach(item => {
+  eliClauseLibrary.forEach((item) => {
     var p = item.entity || "Unspecified Party";
     var a = item.agreement || "General";
     var d = item.date || "No Date";
@@ -20322,13 +21228,15 @@ function showBulkDeleteModal() {
   });
 
   var treeHtml = "";
-  Object.keys(hierarchy).sort().forEach((party, pIdx) => {
-    var groups = hierarchy[party];
-    var totalForParty = Object.values(groups).reduce((acc, obj) => acc + obj.count, 0);
-    var partySafe = party.replace(/"/g, "&quot;");
-    var partyId = `p_${pIdx}`;
+  Object.keys(hierarchy)
+    .sort()
+    .forEach((party, pIdx) => {
+      var groups = hierarchy[party];
+      var totalForParty = Object.values(groups).reduce((acc, obj) => acc + obj.count, 0);
+      var partySafe = party.replace(/"/g, "&quot;");
+      var partyId = `p_${pIdx}`;
 
-    treeHtml += `
+      treeHtml += `
             <div class="party-group" style="border:1px solid #eee; margin-bottom:5px; background:#f9f9f9;">
                 <div style="padding:8px; display:flex; align-items:center; border-bottom:1px solid #eee;">
                     <input type="checkbox" class="chk-party" id="${partyId}" data-party="${partySafe}" style="margin-right:8px;">
@@ -20339,11 +21247,13 @@ function showBulkDeleteModal() {
                 <div class="ag-list" style="padding:5px 0 5px 25px; background:white; display:none;">
         `;
 
-    Object.keys(groups).sort().forEach((key, aIdx) => {
-      var item = groups[key];
-      var keySafe = key.replace(/"/g, "&quot;");
-      var agId = `a_${pIdx}_${aIdx}`;
-      treeHtml += `
+      Object.keys(groups)
+        .sort()
+        .forEach((key, aIdx) => {
+          var item = groups[key];
+          var keySafe = key.replace(/"/g, "&quot;");
+          var agId = `a_${pIdx}_${aIdx}`;
+          treeHtml += `
                 <div style="display:flex; align-items:center; padding:4px 0;">
                     <input type="checkbox" class="chk-ag" id="${agId}" data-party="${partySafe}" data-key="${keySafe}" style="margin-right:8px;">
                     <label for="${agId}" style="font-size:11px; color:#546e7a; cursor:pointer;">
@@ -20352,9 +21262,9 @@ function showBulkDeleteModal() {
                         <span style="font-size:9px; background:#f5f5f5; border:1px solid #eee; padding:0 4px; border-radius:3px; margin-left:6px;">${item.count}</span>
                     </label>
                 </div>`;
+        });
+      treeHtml += `</div></div>`;
     });
-    treeHtml += `</div></div>`;
-  });
 
   box.innerHTML = `
         <div style="background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%); padding:15px; border-bottom:3px solid #ffcdd2;">
@@ -20390,29 +21300,46 @@ function showBulkDeleteModal() {
   document.body.appendChild(overlay);
 
   var radios = box.querySelectorAll('input[name="delView"]');
-  var vTree = document.getElementById("viewTree"), vDate = document.getElementById("viewDate"), vAll = document.getElementById("viewAll"), btn = document.getElementById("btnExecuteDelete");
+  var vTree = document.getElementById("viewTree"),
+    vDate = document.getElementById("viewDate"),
+    vAll = document.getElementById("viewAll"),
+    btn = document.getElementById("btnExecuteDelete");
 
-  radios.forEach(r => {
+  radios.forEach((r) => {
     r.onchange = function () {
-      vTree.style.display = "none"; vDate.style.display = "none"; vAll.style.display = "none";
-      if (this.value === "tree") { vTree.style.display = "block"; btn.innerText = "DELETE SELECTED"; }
-      else if (this.value === "date") { vDate.style.display = "block"; btn.innerText = "DELETE OLDER"; }
-      else { vAll.style.display = "block"; btn.innerText = "NUKE EVERYTHING"; }
+      vTree.style.display = "none";
+      vDate.style.display = "none";
+      vAll.style.display = "none";
+      if (this.value === "tree") {
+        vTree.style.display = "block";
+        btn.innerText = "DELETE SELECTED";
+      } else if (this.value === "date") {
+        vDate.style.display = "block";
+        btn.innerText = "DELETE OLDER";
+      } else {
+        vAll.style.display = "block";
+        btn.innerText = "NUKE EVERYTHING";
+      }
     };
   });
 
-  box.querySelectorAll(".tree-toggle").forEach(arrow => {
+  box.querySelectorAll(".tree-toggle").forEach((arrow) => {
     arrow.onclick = function () {
       var list = this.parentElement.nextElementSibling;
-      if (list.style.display === "none") { list.style.display = "block"; this.innerText = "▼"; }
-      else { list.style.display = "none"; this.innerText = "▶"; }
+      if (list.style.display === "none") {
+        list.style.display = "block";
+        this.innerText = "▼";
+      } else {
+        list.style.display = "none";
+        this.innerText = "▶";
+      }
     };
   });
 
-  box.querySelectorAll(".chk-party").forEach(chk => {
+  box.querySelectorAll(".chk-party").forEach((chk) => {
     chk.onchange = function () {
       var children = box.querySelectorAll(`.chk-ag[data-party="${this.dataset.party}"]`);
-      children.forEach(c => c.checked = this.checked);
+      children.forEach((c) => (c.checked = this.checked));
     };
   });
 
@@ -20424,14 +21351,29 @@ function showBulkDeleteModal() {
     if (mode === "all") eliClauseLibrary = [];
     else if (mode === "date") {
       var dateStr = document.getElementById("delDateInput").value;
-      if (!dateStr) { showToast("⚠️ Pick a date."); return; }
-      eliClauseLibrary = eliClauseLibrary.filter(x => !x.date || x.date >= dateStr);
+      if (!dateStr) {
+        showToast("⚠️ Pick a date.");
+        return;
+      }
+      eliClauseLibrary = eliClauseLibrary.filter((x) => !x.date || x.date >= dateStr);
     } else if (mode === "tree") {
       var checkedAgs = box.querySelectorAll(".chk-ag:checked");
-      if (checkedAgs.length === 0) { showToast("⚠️ Nothing selected."); return; }
+      if (checkedAgs.length === 0) {
+        showToast("⚠️ Nothing selected.");
+        return;
+      }
       var toDelete = new Set();
-      checkedAgs.forEach(chk => toDelete.add(chk.dataset.party + "|" + chk.dataset.key));
-      eliClauseLibrary = eliClauseLibrary.filter(item => !toDelete.has((item.entity || "Unspecified Party") + "|" + (item.agreement || "General") + "|||" + (item.date || "No Date")));
+      checkedAgs.forEach((chk) => toDelete.add(chk.dataset.party + "|" + chk.dataset.key));
+      eliClauseLibrary = eliClauseLibrary.filter(
+        (item) =>
+          !toDelete.has(
+            (item.entity || "Unspecified Party") +
+              "|" +
+              (item.agreement || "General") +
+              "|||" +
+              (item.date || "No Date"),
+          ),
+      );
     }
 
     saveClauseLibrary();
@@ -20446,7 +21388,9 @@ function generateDiffHtml(text1, text2) {
   var arr2 = text2.split(/\s+/);
 
   // 2. Create LCS Matrix
-  var matrix = Array(arr1.length + 1).fill(null).map(() => Array(arr2.length + 1).fill(0));
+  var matrix = Array(arr1.length + 1)
+    .fill(null)
+    .map(() => Array(arr2.length + 1).fill(0));
 
   for (var i = 1; i <= arr1.length; i++) {
     for (var j = 1; j <= arr2.length; j++) {
@@ -20466,12 +21410,17 @@ function generateDiffHtml(text1, text2) {
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && arr1[i - 1] === arr2[j - 1]) {
       result.unshift(`<span style="color:#333;">${arr1[i - 1]}</span>`);
-      i--; j--;
+      i--;
+      j--;
     } else if (j > 0 && (i === 0 || matrix[i][j - 1] >= matrix[i - 1][j])) {
-      result.unshift(`<span style="color:#2e7d32; font-weight:bold; text-decoration:underline; background:#e8f5e9;">${arr2[j - 1]}</span>`);
+      result.unshift(
+        `<span style="color:#2e7d32; font-weight:bold; text-decoration:underline; background:#e8f5e9;">${arr2[j - 1]}</span>`,
+      );
       j--;
     } else {
-      result.unshift(`<span style="color:#c62828; text-decoration:line-through; background:#ffebee;">${arr1[i - 1]}</span>`);
+      result.unshift(
+        `<span style="color:#c62828; text-decoration:line-through; background:#ffebee;">${arr1[i - 1]}</span>`,
+      );
       i--;
     }
   }
@@ -20504,11 +21453,13 @@ function showClauseLibraryInterface() {
 // ==========================================
 function showInfoModal(item) {
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center;";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; display:flex; align-items:center; justify-content:center;";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #1565c0; border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.3);";
+  box.style.cssText =
+    "background:white; width:280px; padding:20px; border-left:5px solid #1565c0; border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.3);";
 
   box.innerHTML = `
         <div style="font-weight:800; color:#1565c0; margin-bottom:10px; font-size:12px; text-transform:uppercase;">CLAUSE METADATA</div>
@@ -20532,11 +21483,13 @@ function showRedlinePrompt(textToInsert) {
 
   var overlay = document.createElement("div");
   overlay.id = "redline-modal";
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:linear-gradient(135deg, #ffffff 0%, #f1f1f1 100%); width:300px; padding:20px; border:1px solid #b0bec5; border-top:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.5); border-radius:0px; text-align:center;";
+  box.style.cssText =
+    "background:linear-gradient(135deg, #ffffff 0%, #f1f1f1 100%); width:300px; padding:20px; border:1px solid #b0bec5; border-top:5px solid #1565c0; box-shadow:0 20px 50px rgba(0,0,0,0.5); border-radius:0px; text-align:center;";
 
   box.innerHTML = `
         <div style="font-weight:800; color:#37474f; font-size:13px; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">INSERTION MODE</div>
@@ -20597,7 +21550,7 @@ function executeInsert(text, turnOnRedlines) {
     .then(() => {
       showToast(turnOnRedlines ? "📝 Inserted (Redlines ON)" : "✅ Inserted");
     })
-    .catch(e => showToast("Error: " + e.message));
+    .catch((e) => showToast("Error: " + e.message));
 }
 function closeFloatingDialogs() {
   var existing = document.getElementById("floatingDialog");
@@ -20609,14 +21562,17 @@ function closeFloatingDialogs() {
 function showRewriteEditor(originalText) {
   // 1. Create Overlay
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #7b1fa2; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column;";
+  box.style.cssText =
+    "background:white; width:450px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #7b1fa2; box-shadow:0 20px 50px rgba(0,0,0,0.4); display:flex; flex-direction:column;";
 
   // 2. Default Instruction
-  var defaultInstruction = "Rewrite this clause to be more favorable to Colgate-Palmolive, prioritizing our rights and limiting our liability.";
+  var defaultInstruction =
+    "Rewrite this clause to be more favorable to Colgate-Palmolive, prioritizing our rights and limiting our liability.";
 
   // 3. UI Structure
   box.innerHTML = `
@@ -20673,16 +21629,18 @@ function showRewriteEditor(originalText) {
         2. Ensure the tone is professional and precise.
     `;
 
-    callGemini(API_KEY, prompt).then(text => {
-      txtRes.value = text.replace(/^"|"$/g, '').trim(); // Clean quotes
-      txtRes.style.color = "#333";
-      btnRegen.disabled = false;
-      btnRegen.style.opacity = "1";
-    }).catch(e => {
-      txtRes.value = "Error: " + e.message;
-      btnRegen.disabled = false;
-      btnRegen.style.opacity = "1";
-    });
+    callGemini(API_KEY, prompt)
+      .then((text) => {
+        txtRes.value = text.replace(/^"|"$/g, "").trim(); // Clean quotes
+        txtRes.style.color = "#333";
+        btnRegen.disabled = false;
+        btnRegen.style.opacity = "1";
+      })
+      .catch((e) => {
+        txtRes.value = "Error: " + e.message;
+        btnRegen.disabled = false;
+        btnRegen.style.opacity = "1";
+      });
   }
 
   // 1. Run immediately on open
@@ -20707,7 +21665,9 @@ function showRewriteEditor(originalText) {
   document.getElementById("btnRwCopy").onclick = function () {
     navigator.clipboard.writeText(txtRes.value);
     this.innerText = "✅ COPIED";
-    setTimeout(() => { this.innerText = "📄 Copy"; }, 1500);
+    setTimeout(() => {
+      this.innerText = "📄 Copy";
+    }, 1500);
   };
 
   // 5. Bind Close
@@ -20720,11 +21680,13 @@ function showRewriteEditor(originalText) {
 // ==========================================
 function showAutoGenerateModal() {
   var overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
+  overlay.style.cssText =
+    "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:20000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);";
 
   var box = document.createElement("div");
   box.className = "tool-box slide-in";
-  box.style.cssText = "background:white; width:350px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #6a1b9a; box-shadow:0 20px 50px rgba(0,0,0,0.4);";
+  box.style.cssText =
+    "background:white; width:350px; padding:0; border-radius:0px; border:1px solid #d1d5db; border-left:5px solid #6a1b9a; box-shadow:0 20px 50px rgba(0,0,0,0.4);";
 
   box.innerHTML = `
     <div style="background: linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%); padding: 15px; border-bottom: 3px solid #ab47bc;">
@@ -20805,27 +21767,29 @@ function runAutoGeneration(topic) {
     4. **Format:** Ensure valid JSON. Escape all quotes within the text field.
   `;
 
-  callGemini(API_KEY, prompt).then(result => {
-    setLoading(false);
-    try {
-      // Use your robust parser
-      var clauses = tryParseGeminiJSON(result);
+  callGemini(API_KEY, prompt)
+    .then((result) => {
+      setLoading(false);
+      try {
+        // Use your robust parser
+        var clauses = tryParseGeminiJSON(result);
 
-      if (Array.isArray(clauses) && clauses.length > 0) {
-        // Send to your existing staging area for review/edit
-        renderImportStaging(clauses, "AI Generation: " + topic);
-        showToast(`✅ Generated ${clauses.length} clauses!`);
-      } else {
-        showToast("⚠️ AI generation failed format check.");
+        if (Array.isArray(clauses) && clauses.length > 0) {
+          // Send to your existing staging area for review/edit
+          renderImportStaging(clauses, "AI Generation: " + topic);
+          showToast(`✅ Generated ${clauses.length} clauses!`);
+        } else {
+          showToast("⚠️ AI generation failed format check.");
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("❌ Error parsing AI response.");
       }
-    } catch (e) {
-      console.error(e);
-      showToast("❌ Error parsing AI response.");
-    }
-  }).catch(e => {
-    setLoading(false);
-    showToast("Error: " + e.message);
-  });
+    })
+    .catch((e) => {
+      setLoading(false);
+      showToast("Error: " + e.message);
+    });
 }
 // ==========================================
 // NEW: updateTabCounts (Dynamic Button Numbers)
@@ -20836,11 +21800,17 @@ function runAutoGeneration(topic) {
 function updateTabCounts(searchText, searchField) {
   var counts = { all: 0, standard: 0, thirdparty: 0, public: 0 };
 
-  eliClauseLibrary.forEach(item => {
+  eliClauseLibrary.forEach((item) => {
     var isMatch = true;
     if (searchText) {
       if (searchField === "all") {
-        var content = ((item.title || "") + (item.text || "") + (item.category || "") + (item.agreement || "") + (item.entity || "")).toLowerCase();
+        var content = (
+          (item.title || "") +
+          (item.text || "") +
+          (item.category || "") +
+          (item.agreement || "") +
+          (item.entity || "")
+        ).toLowerCase();
         isMatch = content.includes(searchText);
       } else {
         var val = (item[searchField] || "").toLowerCase();
@@ -20862,7 +21832,7 @@ function updateTabCounts(searchText, searchField) {
   });
 
   var btns = document.querySelectorAll(".toggle-btn");
-  btns.forEach(btn => {
+  btns.forEach((btn) => {
     var mode = btn.dataset.mode;
     var count = counts[mode] || 0;
 
@@ -20880,11 +21850,11 @@ function updateTabCounts(searchText, searchField) {
 function checkStorageUsage() {
   // 1. FORCE CLOSE OVERLAYS
   // This loop finds and removes any "Fixed" position modal blocking the screen
-  var allDivs = document.querySelectorAll('div');
+  var allDivs = document.querySelectorAll("div");
   for (var i = 0; i < allDivs.length; i++) {
     var d = allDivs[i];
     // Target divs with high z-index (your modals are usually 20000)
-    if (d.style.position === 'fixed' && parseInt(d.style.zIndex || 0) >= 20000) {
+    if (d.style.position === "fixed" && parseInt(d.style.zIndex || 0) >= 20000) {
       d.remove();
     }
   }
@@ -20912,22 +21882,25 @@ function checkStorageUsage() {
   for (var key in localStorage) {
     if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
       var val = localStorage[key];
-      var size = ((val.length + key.length) * 2);
+      var size = (val.length + key.length) * 2;
       total += size;
       items.push({ key: key, size: size, preview: val.substring(0, 60) });
     }
   }
-  items.sort(function (a, b) { return b.size - a.size; });
+  items.sort(function (a, b) {
+    return b.size - a.size;
+  });
 
   var totalKB = (total / 1024).toFixed(2);
   var limit = 5120; // 5MB limit
   var pct = ((totalKB / limit) * 100).toFixed(1);
-  var barColor = pct > 80 ? "#c62828" : (pct > 50 ? "#f57f17" : "#2e7d32");
+  var barColor = pct > 80 ? "#c62828" : pct > 50 ? "#f57f17" : "#2e7d32";
 
   // 5. RENDER USAGE BAR
   var statsCard = document.createElement("div");
   statsCard.className = "tool-box slide-in";
-  statsCard.style.cssText = "padding:15px; background:white; border-left:5px solid " + barColor + "; margin-bottom:20px;";
+  statsCard.style.cssText =
+    "padding:15px; background:white; border-left:5px solid " + barColor + "; margin-bottom:20px;";
 
   statsCard.innerHTML = `
       <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:11px; font-weight:700; color:#555;">
@@ -20952,7 +21925,8 @@ function checkStorageUsage() {
   items.forEach(function (item) {
     var kb = (item.size / 1024).toFixed(2);
     var row = document.createElement("div");
-    row.style.cssText = "background:white; border:1px solid #e0e0e0; margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
+    row.style.cssText =
+      "background:white; border:1px solid #e0e0e0; margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
 
     row.innerHTML = `
           <div style="overflow:hidden; width:65%;">
@@ -20968,11 +21942,13 @@ function checkStorageUsage() {
     // Custom Delete Dialog (No 'confirm' block)
     row.querySelector(".btn-del-key").onclick = function () {
       var overlay = document.createElement("div");
-      overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center;";
+      overlay.style.cssText =
+        "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:center; justify-content:center;";
 
       var dialog = document.createElement("div");
       dialog.className = "tool-box slide-in";
-      dialog.style.cssText = "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
+      dialog.style.cssText =
+        "background:white; width:280px; padding:20px; border-left:5px solid #c62828; box-shadow:0 10px 25px rgba(0,0,0,0.3); border-radius:4px;";
 
       dialog.innerHTML = `
               <div style="font-size:24px; margin-bottom:10px;">🗑️</div>
@@ -20989,7 +21965,9 @@ function checkStorageUsage() {
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
 
-      document.getElementById("btnNoDel").onclick = function () { overlay.remove(); };
+      document.getElementById("btnNoDel").onclick = function () {
+        overlay.remove();
+      };
       document.getElementById("btnYesDel").onclick = function () {
         localStorage.removeItem(item.key);
         overlay.remove();
@@ -21008,7 +21986,9 @@ function checkStorageUsage() {
   btnBack.className = "btn-action";
   btnBack.innerText = "🏠 Home"; // Changed label
   btnBack.style.marginTop = "20px";
-  btnBack.onclick = function () { showHome(); }; // Changed action
+  btnBack.onclick = function () {
+    showHome();
+  }; // Changed action
   out.appendChild(btnBack);
 }
 // ==========================================
@@ -21041,16 +22021,16 @@ if (typeof Office !== "undefined") {
       }
     } else {
       console.error("❌ CRITICAL ERROR: 'init()' function is missing or undefined.");
-      document.body.innerHTML = "<h3 style='color:red; padding:20px;'>Error: init() function not found. Check script.</h3>";
+      document.body.innerHTML =
+        "<h3 style='color:red; padding:20px;'>Error: init() function not found. Check script.</h3>";
     }
   });
 } else {
   // Fallback if Office.js script tag is missing in HTML
   console.error("❌ Office.js library not loaded.");
   if (document.readyState === "complete" || document.readyState === "interactive") {
-     init(); // Try forcing init anyway for browser testing
+    init(); // Try forcing init anyway for browser testing
   } else {
-     document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", init);
   }
 }
-      
