@@ -3,60 +3,64 @@
   xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:type="TaskPaneApp">
 
-  <Id>b29c3890-4422-4988-ad9a-582345609988</Id> <Version>1.0.0.0</Version>
+  <Id>b29c3890-4422-4988-ad9a-582345609989</Id>
+  <Version>1.0.0.0</Version>
   <ProviderName>Colgate Legal Ops</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Colgate ELI" />
-  <Description DefaultValue="Enhanced Legal Intelligence: AI-powered contract review and drafting assistant." />
+  <Description DefaultValue="Enhanced Legal Intelligence: AI-powered contract review." />
 
-  <IconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/assets/icon-80.png" />
+  <IconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
   <HighResolutionIconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
   <SupportUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/help.html" />
 
-  <Hosts>
-    <Host Name="Document" />
-  </Hosts>
-  <DefaultSettings>
-    <SourceLocation DefaultValue="https://apndrewn.github.io/ELI-Addin/taskpane.html" />
-  </DefaultSettings>
-
-  <Permissions>ReadWriteDocument</Permissions>
   <AppDomains>
     <AppDomain>https://eli-backend.vercel.app</AppDomain>
     <AppDomain>https://apndrewn.github.io</AppDomain>
   </AppDomains>
 
-  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://apndrewn.github.io/ELI-Addin/taskpane.html" />
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0" xsi:type="VersionOverridesV1_0">
     <Hosts>
-      <Host xsi:type="Word">
+      <Host xsi:type="Document">
         <DesktopFormFactor>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <CustomTab id="TabColgateEli">
-              <Label xsi:type="bt:String" bt:value="Colgate AI" />
+              <Label resid="Colgate.TabLabel" />
               <Group id="GrpEliMain">
-                <Label xsi:type="bt:String" bt:value="Legal Tools" />
+                <Label resid="Colgate.GroupLabel" />
                 <Icon>
-                  <bt:Image size="16" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
-                  <bt:Image size="32" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
-                  <bt:Image size="80" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
+                  <bt:Image size="16" resid="Colgate.Icon16" />
+                  <bt:Image size="32" resid="Colgate.Icon32" />
+                  <bt:Image size="80" resid="Colgate.Icon80" />
                 </Icon>
                 
                 <Control xsi:type="Button" id="BtnOpenEli">
-                  <Label xsi:type="bt:String" bt:value="Launch ELI" />
+                  <Label resid="Colgate.ButtonLabel" />
                   <Supertip>
-                    <Title bt:value="Colgate ELI" />
-                    <Description bt:value="Open the AI Legal Assistant." />
+                    <Title resid="Colgate.ButtonLabel" />
+                    <Description resid="Colgate.ButtonTooltip" />
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
-                    <bt:Image size="32" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
-                    <bt:Image size="80" bt:value="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
+                    <bt:Image size="16" resid="Colgate.Icon16" />
+                    <bt:Image size="32" resid="Colgate.Icon32" />
+                    <bt:Image size="80" resid="Colgate.Icon80" />
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <TaskpaneId>EliTaskpane</TaskpaneId>
-                    <SourceLocation bt:value="https://apndrewn.github.io/ELI-Addin/taskpane.html" />
+                    <SourceLocation resid="Colgate.TaskpaneUrl" />
                   </Action>
                 </Control>
               </Group>
@@ -65,6 +69,24 @@
         </DesktopFormFactor>
       </Host>
     </Hosts>
-  </VersionOverrides>
 
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Colgate.Icon16" DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
+        <bt:Image id="Colgate.Icon32" DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
+        <bt:Image id="Colgate.Icon80" DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Colgate.TaskpaneUrl" DefaultValue="https://apndrewn.github.io/ELI-Addin/taskpane.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Colgate.TabLabel" DefaultValue="Colgate AI" />
+        <bt:String id="Colgate.GroupLabel" DefaultValue="Legal Tools" />
+        <bt:String id="Colgate.ButtonLabel" DefaultValue="Launch ELI" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Colgate.ButtonTooltip" DefaultValue="Open the AI Legal Assistant." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
 </OfficeApp>
