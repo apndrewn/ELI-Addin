@@ -12,7 +12,7 @@
   <Description DefaultValue="Enhanced Legal Intelligence: AI-powered contract review and drafting assistant." />
 
   <IconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/assets/icon-80.png" />
-  <HighResolutionIconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/assets/icon-80.png" />
+  <HighResolutionIconUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/icon-80.png" />
   <SupportUrl DefaultValue="https://apndrewn.github.io/ELI-Addin/help.html" />
 
   <Hosts>
@@ -66,4 +66,5 @@
       </Host>
     </Hosts>
   </VersionOverrides>
+
 </OfficeApp>
