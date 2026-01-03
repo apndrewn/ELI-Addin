@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+          xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+          xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0"
+          xsi:type="TaskPaneApp">
+
+  <Id>5f8a6b32-9c1d-4e5f-a2b3-c4d5e6f7g8h9</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Tester Inc.</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="TESTER BUTTON" />
+  <Description DefaultValue="A simple test manifest to verify Shared Folder loading." />
+  
+  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png" />
+
+  <SupportUrl DefaultValue="https://www.google.com" />
+
+  <AppDomains>
+    <AppDomain>https://www.google.com</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://www.google.com" />
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides/1.0" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Contoso.DesktopFunctionFile.Url" />
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Contoso.Group1">
+                <Label resid="Contoso.Group1.Label" />
+                <Icon>
+                  <bt:Image size="16" resid="Contoso.tpicon_16" />
+                  <bt:Image size="32" resid="Contoso.tpicon_32" />
+                  <bt:Image size="80" resid="Contoso.tpicon_80" />
+                </Icon>
+                <Control xsi:type="Button" id="Contoso.TaskpaneButton">
+                  <Label resid="Contoso.TaskpaneButton.Label" />
+                  <Supertip>
+                    <Title resid="Contoso.TaskpaneButton.Label" />
+                    <Description resid="Contoso.TaskpaneButton.Tooltip" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Contoso.tpicon_16" />
+                    <bt:Image size="32" resid="Contoso.tpicon_32" />
+                    <bt:Image size="80" resid="Contoso.tpicon_80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ButtonId1</TaskpaneId>
+                    <SourceLocation resid="Contoso.Taskpane.Url" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Contoso.tpicon_16" DefaultValue="https://localhost:3000/assets/icon-16.png" />
+        <bt:Image id="Contoso.tpicon_32" DefaultValue="https://localhost:3000/assets/icon-32.png" />
+        <bt:Image id="Contoso.tpicon_80" DefaultValue="https://localhost:3000/assets/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Contoso.Taskpane.Url" DefaultValue="https://www.google.com" />
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812" />
+        <bt:Url id="Contoso.DesktopFunctionFile.Url" DefaultValue="https://localhost:3000/function-file/function-file.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="Get started with the Tester!" />
+        <bt:String id="Contoso.TaskpaneButton.Label" DefaultValue="CLICK TO TEST" />
+        <bt:String id="Contoso.Group1.Label" DefaultValue="Test Group" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="This is a test add-in." />
+        <bt:String id="Contoso.TaskpaneButton.Tooltip" DefaultValue="Click to open the test side panel." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
