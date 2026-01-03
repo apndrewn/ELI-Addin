@@ -471,8 +471,6 @@ window.applyButtonTheme = function () {
 
 // - REPLACEMENT
 // --- DEBUG: CONFIRM SCRIPT EXECUTION ---
-console.log = function () { };
-console.warn = function () { };
 var eliClauseLibrary = [];
 // GLOBAL SETTINGS OBJECT
 var userSettings = {
@@ -21013,16 +21011,46 @@ function checkStorageUsage() {
   btnBack.onclick = function () { showHome(); }; // Changed action
   out.appendChild(btnBack);
 }
-Office.onReady(function (info) {
-  // --- RESIZE LOGIC ---
-  try {
-    Office.extensionLifeCycle.taskpane.setWidth(750);
-  } catch (e) {
-    console.log("Resize not supported.");
+// ==========================================
+// 🚀 FINAL SYSTEM INITIALIZATION
+// ==========================================
+
+// Check if Office.js is loaded
+if (typeof Office !== "undefined") {
+  Office.onReady(function (info) {
+    console.log("⚡ Office.onReady Fired. Host:", info.host);
+
+    // 1. Attempt Resize (Safe Wrap)
+    try {
+      if (Office.extensionLifeCycle && Office.extensionLifeCycle.taskpane) {
+        Office.extensionLifeCycle.taskpane.setWidth(750);
+      }
+    } catch (e) {
+      console.warn("Resize not supported on this platform.");
+    }
+
+    // 2. Run Init (With Safety Check)
+    if (typeof init === "function") {
+      // If DOM is already ready, run immediately. Otherwise wait.
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        console.log("🚀 DOM Ready. Running init()...");
+        init();
+      } else {
+        console.log("⏳ DOM not ready. Adding listener...");
+        document.addEventListener("DOMContentLoaded", init);
+      }
+    } else {
+      console.error("❌ CRITICAL ERROR: 'init()' function is missing or undefined.");
+      document.body.innerHTML = "<h3 style='color:red; padding:20px;'>Error: init() function not found. Check script.</h3>";
+    }
+  });
+} else {
+  // Fallback if Office.js script tag is missing in HTML
+  console.error("❌ Office.js library not loaded.");
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+     init(); // Try forcing init anyway for browser testing
+  } else {
+     document.addEventListener("DOMContentLoaded", init);
   }
-  
-  // FORCE START: No waiting for DOM events that might have already passed
-  console.log("⚡ Office Ready - Forcing Init");
-  init();
-});
+}
       
