@@ -1994,25 +1994,18 @@ ${langRule}
 };
 
 // 1. Initialize when Office and DOM are ready
+// 1. Initialize when Office and DOM are ready
 Office.onReady(function (info) {
   // --- RESIZE LOGIC ---
   try {
-    // Attempt to set width to 500px
-    // (Desktop max is ~50% screen width; Web max is ~500px)
     Office.extensionLifeCycle.taskpane.setWidth(750);
   } catch (e) {
-    console.log("Resize not supported in this host.");
+    console.log("Resize not supported.");
   }
-  // --------------------
-
-  if (
-    document.readyState === "complete" ||
-    document.readyState === "interactive"
-  ) {
-    init();
-  } else {
-    document.addEventListener("DOMContentLoaded", init);
-  }
+  
+  // FORCE START: No waiting for DOM events that might have already passed
+  console.log("⚡ Office Ready - Forcing Init");
+  init();
 });
 // --- TOOLBAR STATE ---
 var toolbarPage = 1;
